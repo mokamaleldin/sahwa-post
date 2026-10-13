@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "source": "دليل صحوة، الصفحات 2–6",
+  "colors": {
+    "primary": "#752026",
+    "dark": "#350e15",
+    "gold": "#d6ad63",
+    "paper": "#f2e9e2"
+  },
+  "typography": {
+    "title": [
+      "Asal Arabic Bold",
+      "Milan Display Black"
+    ],
+    "text": {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 400
+    },
+    "information": {
+      "family": "IBM Plex Sans Arabic",
+      "weight": 100
+    }
+  },
+  "rules": {
+    "background": "off-white instead of pure white",
+    "logo": "original Sahwa logo at upper left",
+    "symbol": "original Sahwa symbol in background or at element corner",
+    "lighting": "preserve soft upper-left light",
+    "layout": "retain balanced title/image areas and protected text spaces"
+  },
+  "heading_font_status": "Full Asal or Milan file must be supplied locally; the PDF does not contain either font program."
+}

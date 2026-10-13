@@ -26,11 +26,12 @@
     info3Label: 'التفاصيل', info3Value: 'في وصف المنشور'
   });
   const KEYS = Object.keys(DEFAULTS);
+  const TYPOGRAPHY = Object.freeze({ textFamily: 'SahwaBodyRegular', textWeight: 400, informationFamily: 'SahwaBodyThin', informationWeight: 100 });
   const BASIC_TEMPLATE = Object.freeze({
     id: TEMPLATE.id, name: 'القالب الأساسي', description: 'عنوان و٣ معلومات',
     width: TEMPLATE.width, height: TEMPLATE.height, color: TEMPLATE.color,
     fields: { subtitle: true, informationCount: 3, labels: true, speakerName: false, image: false },
-    defaults: DEFAULTS, example: EXAMPLE, layout: TEMPLATE
+    defaults: DEFAULTS, example: EXAMPLE, typography: TYPOGRAPHY, layout: TEMPLATE
   });
   function normalize(value) { return String(value ?? '').replace(/\r\n?/g, '\n').trim(); }
   function cleanInput(input) {
@@ -138,6 +139,13 @@
   }
   function sameText(a, b) { return normalize(a).replace(/\s+/g, ' ') === normalize(b).replace(/\s+/g, ' '); }
   const photoBuffers = new WeakMap();
+  function drawSymbol(ctx, images, template, layer) {
+    const spec = template.layout.symbol;
+    if (!images.symbol || !spec || spec.layer !== layer) return;
+    ctx.save(); ctx.globalAlpha = spec.opacity ?? 1;
+    ctx.drawImage(images.symbol, spec.x, spec.y, spec.width, spec.height);
+    ctx.restore();
+  }
   function photoGeometry(image, frame, transform = {}) {
     const zoom = Math.max(1, Math.min(3, Number(transform.zoom) || 1));
     const position = key => Math.max(-100, Math.min(100, Number(transform[key]) || 0)) / 100;
@@ -152,10 +160,12 @@
   function drawPhoto(ctx, images, template, options) {
     const { photoImage, photoTransform, createCanvas, photoMode = 'circle', grayscale = false, renderScale = 1 } = options;
     if (!photoImage) {
+      drawSymbol(ctx, images, template, 'behind-photo');
       if (images.defaultPhoto) ctx.drawImage(images.defaultPhoto, 0, 0, template.width, template.height);
       return;
     }
     if (images.photoBackdrop) ctx.drawImage(images.photoBackdrop, 0, 0, template.width, template.height);
+    drawSymbol(ctx, images, template, 'behind-photo');
     const frame = template.layout.photoCircle && photoMode !== 'cutout' ? template.layout.photoCircle : template.layout.photo;
     const masked = frame.shape === 'mask' && !!images.photoMask;
     const geometry = photoGeometry(photoImage, frame, photoTransform);
@@ -190,6 +200,7 @@
     const { images, titleMode = 'original', template = BASIC_TEMPLATE, infoEnabled = [true, true, true], titleKashida = true, renderScale = 1 } = options;
     const layout = template.layout;
     const fields = template.fields;
+    const typography = template.typography || TYPOGRAPHY;
     const errors = [];
     ctx.save();
     ctx.scale(renderScale, renderScale);
@@ -200,6 +211,7 @@
       drawPhoto(ctx, images, template, options);
     }
     if (images.foreground) ctx.drawImage(images.foreground, 0, 0, template.width, template.height);
+    drawSymbol(ctx, images, template, 'background');
     ctx.fillStyle = template.color || TEMPLATE.color;
     ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'rtl';
     if ('fontKerning' in ctx) ctx.fontKerning = 'normal';
@@ -218,13 +230,11 @@
         const baselines = fitted.lines.length === 1 ? [layout.title.singleBaseline ?? (layout.title.baselines[0] + layout.title.baselines[1]) / 2] : layout.title.baselines;
         drawText(ctx, fitted, layout.title.right, baselines, layout.title.align);
       }
-      if (titleMode === 'original') errors.push({ field: 'titleFont', message: 'ارفع خط Asal Arabic Bold لتصدير العنوان الجديد بنفس الخط، أو فعّل الخط المؤقت للتجربة.' });
+      if (titleMode === 'original') errors.push({ field: 'titleFont', message: 'ارفع Asal Arabic Bold أو Milan Display Black من دليل الهوية، أو فعّل خط العنوان المؤقت.' });
     }
 
-    if (fields.subtitle && input.subtitle && images.originalSubtitle && input.subtitle === normalize(template.defaults.subtitle)) {
-      ctx.drawImage(images.originalSubtitle, 0, 0, template.width, template.height);
-    } else if (fields.subtitle && input.subtitle) {
-      const fitted = fixedFit(ctx, input.subtitle, layout.subtitle, 'SahwaBodyExtraLight', 200, 2);
+    if (fields.subtitle && input.subtitle) {
+      const fitted = fixedFit(ctx, input.subtitle, layout.subtitle, typography.textFamily, typography.textWeight, 2);
       if (!fitted) errors.push({ field: 'subtitle', message: 'الجملة الثانوية تتجاوز سطرين بحجمها الطبيعي. اختصرها أو اختر موضع السطر الثاني بـ Enter.' });
       else {
         subtitleSize = fitted.size; subtitleLines = fitted.lines;
@@ -236,13 +246,10 @@
       }
     }
     if (fields.speakerName && input.speakerName) {
-      if (images.originalSpeaker && sameText(input.speakerName, template.defaults.speakerName)) ctx.drawImage(images.originalSpeaker, 0, 0, template.width, template.height);
-      else {
-        const spec = layout.speaker || layout.speakerName;
-        const fitted = fit(ctx, input.speakerName, spec, 'SahwaBodyLight', 300, 1);
-        if (!fitted) errors.push({ field: 'speakerName', message: 'اسم الأستاذ أطول من المساحة المتاحة. اختصره.' });
-        else drawText(ctx, fitted, spec.right, [spec.baseline], spec.align);
-      }
+      const spec = layout.speaker || layout.speakerName;
+      const fitted = fit(ctx, input.speakerName, spec, typography.textFamily, typography.textWeight, 1);
+      if (!fitted) errors.push({ field: 'speakerName', message: 'اسم الأستاذ أطول من المساحة المتاحة. اختصره.' });
+      else drawText(ctx, fitted, spec.right, [spec.baseline], spec.align);
     }
     let informationCount = 0;
     for (let i = 1; i <= fields.informationCount; i++) {
@@ -254,14 +261,12 @@
         continue;
       }
       const text = label ? `${label}: ${value}` : value;
-      const originalInformation = !label && sameText(value, template.defaults[`info${i}Value`]) && images[`originalInformation${i}`];
-      const fitted = originalInformation ? null : fit(ctx, text, layout.information, 'SahwaBodyLight', 300, 1);
-      if (!fitted && !originalInformation) { errors.push({ field: `info${i}Value`, message: `المعلومة ${i} أطول من المساحة المتاحة. اختصرها.` }); continue; }
+      const fitted = fit(ctx, text, layout.information, typography.informationFamily, typography.informationWeight, 1);
+      if (!fitted) { errors.push({ field: `info${i}Value`, message: `المعلومة ${i} أطول من المساحة المتاحة. اختصرها.` }); continue; }
       const marker = layout.markers?.[i - 1] || { x: layout.information.markerX, y: layout.information.markerY[i - 1], width: layout.information.markerSize, height: layout.information.markerSize };
       const badge = images[`marker${i}`] || images.badge;
       if (badge) ctx.drawImage(badge, marker.x, marker.y, marker.width, marker.height);
-      if (originalInformation) ctx.drawImage(originalInformation, 0, 0, template.width, template.height);
-      else drawText(ctx, fitted, layout.information.right, [layout.information.baselines[i - 1]], layout.information.align);
+      drawText(ctx, fitted, layout.information.right, [layout.information.baselines[i - 1]], layout.information.align);
       informationCount++;
     }
     ctx.restore();
@@ -303,5 +308,63 @@
   function isOriginalFont(names) {
     return names.some(item => item.id === 6 && /^(?:itf)?asalarabic[-_ ]?bold$/i.test(item.text.replace(/^[A-Z]{6}\+/, '')));
   }
-  return { TEMPLATE, BASIC_TEMPLATE, DEFAULTS, EXAMPLE, KEYS, normalize, cleanInput, isOriginalTitle, wrap, fit, fixedFit, kashidaSlots, stretchLine, layoutTitle, exportDimensions, photoGeometry, render, parseFontNames, isOriginalFont };
+  function titleFontInfo(names) {
+    if (isOriginalFont(names)) return { kind: 'asal', label: 'Asal Arabic Bold' };
+    if (names.some(item => item.id === 6 && /^milandisplay(?:swashes)?[-_ ]?black$/i.test(item.text.replace(/^[A-Z]{6}\+/, '')))) {
+      return { kind: 'milan', label: 'Milan Display Black' };
+    }
+    return null;
+  }
+  function hasArabicFontProgram(buffer) {
+    const view = new DataView(buffer), tables = new Map();
+    if (view.byteLength < 12) return false;
+    const count = view.getUint16(4);
+    if (12 + count * 16 > view.byteLength) return false;
+    for (let i = 0; i < count; i++) {
+      const p = 12 + i * 16, start = view.getUint32(p + 8), length = view.getUint32(p + 12);
+      if (start + length > view.byteLength) return false;
+      tables.set(view.getUint32(p), { start, length });
+    }
+    const cmap = tables.get(0x636d6170), gsub = tables.get(0x47535542);
+    if (!cmap || cmap.length < 4 || !gsub || gsub.length < 10) return false;
+    const maps = [], records = view.getUint16(cmap.start + 2), limit = cmap.start + cmap.length;
+    if (4 + records * 8 > cmap.length) return false;
+    for (let i = 0; i < records; i++) {
+      const p = cmap.start + 4 + i * 8, platform = view.getUint16(p), encoding = view.getUint16(p + 2);
+      if (platform !== 0 && !(platform === 3 && [1, 10].includes(encoding))) continue;
+      const start = cmap.start + view.getUint32(p + 4);
+      if (start + 8 > limit) continue;
+      const format = view.getUint16(start);
+      const length = format === 12 ? (start + 16 <= limit ? view.getUint32(start + 4) : 0) : view.getUint16(start + 2);
+      if (length < 8 || start + length > limit) continue;
+      if (format === 4) {
+        const segments = view.getUint16(start + 6) / 2;
+        if (!Number.isInteger(segments) || 16 + segments * 8 > length) continue;
+        maps.push(code => {
+          const ends = start + 14, starts = ends + segments * 2 + 2, deltas = starts + segments * 2, ranges = deltas + segments * 2;
+          for (let s = 0; s < segments; s++) {
+            if (code > view.getUint16(ends + s * 2) || code < view.getUint16(starts + s * 2)) continue;
+            const delta = view.getInt16(deltas + s * 2), offset = view.getUint16(ranges + s * 2);
+            if (!offset) return (code + delta) & 0xffff;
+            const pos = ranges + s * 2 + offset + (code - view.getUint16(starts + s * 2)) * 2;
+            if (pos + 2 > start + length) return 0;
+            const glyph = view.getUint16(pos); return glyph ? (glyph + delta) & 0xffff : 0;
+          }
+          return 0;
+        });
+      } else if (format === 12 && length >= 16) {
+        const groups = view.getUint32(start + 12);
+        if (16 + groups * 12 > length) continue;
+        maps.push(code => {
+          for (let g = 0; g < groups; g++) {
+            const p = start + 16 + g * 12, first = view.getUint32(p), last = view.getUint32(p + 4);
+            if (code >= first && code <= last) return view.getUint32(p + 8) + code - first;
+          }
+          return 0;
+        });
+      }
+    }
+    return Array.from('ابتثجحخدذرزسشصضطظعغفقكلمنهويأإآؤئةىـ').every(letter => maps.some(map => map(letter.codePointAt(0)) > 0));
+  }
+  return { TEMPLATE, TYPOGRAPHY, BASIC_TEMPLATE, DEFAULTS, EXAMPLE, KEYS, normalize, cleanInput, isOriginalTitle, wrap, fit, fixedFit, kashidaSlots, stretchLine, layoutTitle, exportDimensions, photoGeometry, render, parseFontNames, isOriginalFont, titleFontInfo, hasArabicFontProgram };
 });

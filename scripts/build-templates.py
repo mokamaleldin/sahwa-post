@@ -17,9 +17,12 @@ bundle = {
     'originalTitle': data_uri(ASSETS / 'original-headline.svg', 'image/svg+xml'),
     'badge': data_uri(ASSETS / 'gold-marker.png'),
     'thumbnail': data_uri(ASSETS / 'basic-thumbnail.png'),
+    'brand': json.loads((ASSETS / 'brand-guide.json').read_text()),
+    'symbol': data_uri(ASSETS / 'sahwa-symbol.png'),
+    'logo': data_uri(ASSETS / 'sahwa-logo.png'),
     'fonts': {
         key: data_uri(ASSETS / f'IBMPlexSansArabic-{weight}.ttf', 'font/ttf')
-        for key, weight in [('extraLight', 'ExtraLight'), ('light', 'Light'), ('bold', 'Bold')]
+        for key, weight in [('regular', 'Regular'), ('thin', 'Thin'), ('bold', 'Bold')]
     },
     'templates': [],
 }
@@ -33,8 +36,11 @@ for template_id in ['psb2', 'psb3']:
     metadata = json.loads((ASSETS / template_id / 'metadata.json').read_text())
     template = {key: metadata[key] for key in ['id', 'name', 'description', 'width', 'height', 'color', 'defaults', 'fields', 'layout']}
     template['name'], template['summary'] = names[template_id]
+    template['typography'] = {'textFamily': 'SahwaBodyRegular', 'textWeight': 400, 'informationFamily': 'SahwaBodyThin', 'informationWeight': 100}
     template['assets'] = {}
     for key, relative_path in metadata['assets'].items():
+        if key in ['originalSubtitle', 'originalSpeakerName'] or key.startswith('originalInformation'):
+            continue  # Body text is now drawn with the weights specified in the brand guide.
         source = data_uri(DIST / relative_path)
         if key == 'thumbnail':
             template['thumbnail'] = source
@@ -50,6 +56,11 @@ for template_id in ['psb2', 'psb3']:
     if template_id == 'psb2':
         template['layout']['photoCircle'] = {'x': 4, 'y': 563, 'width': 476, 'height': 486, 'shape': 'ellipse', 'fit': 'cover'}
         template['fields']['imageHint'] = 'الصورة العادية تبقى داخل الدائرة. للشخص المفرغ اختر «صورة مفرغة» أو استخدم التفريغ التلقائي.'
+        template['layout']['symbol'] = {'x': 416, 'y': 506, 'width': 90, 'height': 90, 'opacity': 0.55, 'layer': 'behind-photo'}
+    else:
+        template['assets']['background'] = data_uri(ASSETS / 'guide-paper.png')
+        template['layout']['symbol'] = {'x': 914, 'y': 72, 'width': 104, 'height': 104, 'opacity': 0.13, 'layer': 'background'}
+    template['assets']['symbol'] = bundle['symbol']
     template['example'] = {
         **template['defaults'], 'title': 'لقاء\nصحوة',
         'subtitle': 'مساحة نتعلم فيها ونترك أثرًا',

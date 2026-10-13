@@ -16,15 +16,15 @@ const context = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'dist/template-assets.js'), 'utf8'), context);
 const assets = context.window.SAHWA_ASSETS;
 for (const [file, family] of [
-  ['IBMPlexSansArabic-ExtraLight.ttf', 'SahwaBodyExtraLight'],
-  ['IBMPlexSansArabic-Light.ttf', 'SahwaBodyLight'],
+  ['IBMPlexSansArabic-Regular.ttf', 'SahwaBodyRegular'],
+  ['IBMPlexSansArabic-Thin.ttf', 'SahwaBodyThin'],
   ['IBMPlexSansArabic-Bold.ttf', 'SahwaBodyBold']
 ]) assert.ok(GlobalFonts.registerFromPath(path.join(root, 'dist/assets', file), family), family);
 let passed = 0;
 function check(label, action) { action(); passed++; process.stdout.write(`PASS ${label}\n`); }
 function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
 (async function () {
-  const images = Object.fromEntries(await Promise.all(['background', 'originalTitle', 'badge'].map(async key => [key, await loadImage(assets[key])])));
+  const images = Object.fromEntries(await Promise.all(['background', 'originalTitle', 'badge', 'symbol'].map(async key => [key, await loadImage(assets[key])])));
   const canvas = createCanvas(1080, 1300), ctx = canvas.getContext('2d');
   const fixedCanvas = createCanvas(1080, 1300), fixedContext = fixedCanvas.getContext('2d');
   fixedContext.drawImage(images.background, 0, 0, 1080, 1300);
@@ -75,6 +75,49 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
   check('font parser reads PostScript names from a real font', () => { assert.ok(names.some(name => name.id === 6 && name.text === 'IBMPlexSansArabic-Bold')); });
   check('a different font cannot be accepted as Asal Arabic Bold', () => { assert.equal(Engine.isOriginalFont(names), false); assert.equal(Engine.isOriginalFont([{ id: 6, text: 'itfAsalArabic-Bold' }]), true); });
   check('invalid font files fail cleanly', () => { assert.throws(() => Engine.parseFontNames(new ArrayBuffer(3))); assert.throws(() => Engine.parseFontNames(new ArrayBuffer(20))); });
+  check('both heading families from the guide are recognized without accepting unrelated fonts', () => {
+    assert.equal(Engine.titleFontInfo([{ id: 6, text: 'itfAsalArabic-Bold' }]).kind, 'asal');
+    assert.equal(Engine.titleFontInfo([{ id: 6, text: 'MilanDisplay-Black' }]).kind, 'milan');
+    assert.equal(Engine.titleFontInfo([{ id: 6, text: 'MilanDisplaySwashes-Black' }]).kind, 'milan');
+    assert.equal(Engine.titleFontInfo(names), null);
+  });
+  check('complete IBM fonts provide Arabic letters, tatweel and shaping tables', () => {
+    for (const weight of ['Regular', 'Thin', 'Bold']) {
+      const bytes = fs.readFileSync(path.join(root, `dist/assets/IBMPlexSansArabic-${weight}.ttf`));
+      assert.equal(Engine.hasArabicFontProgram(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)), true);
+    }
+  });
+  check('a partial font with missing cmap or Arabic shaping is rejected', () => {
+    assert.equal(Engine.hasArabicFontProgram(new ArrayBuffer(3)), false);
+    for (const tag of ['GSUB', 'cmap']) {
+      const partial = fontBuffer.slice(0), view = new DataView(partial);
+      for (let i = 0; i < view.getUint16(4); i++) {
+        const p = 12 + i * 16;
+        if (Buffer.from(partial, p, 4).toString('ascii') === tag) view.setUint32(p, 0);
+      }
+      assert.equal(Engine.hasArabicFontProgram(partial), false);
+    }
+  });
+  check('guide palette and original logo and symbol are bundled for offline use', () => {
+    assert.deepEqual(JSON.parse(JSON.stringify(assets.brand.colors)), { primary: '#752026', dark: '#350e15', gold: '#d6ad63', paper: '#f2e9e2' });
+    assert.ok(assets.logo.startsWith('data:image/png;base64,')); assert.ok(assets.symbol.startsWith('data:image/png;base64,'));
+    assert.ok(assets.fonts.regular.startsWith('data:font/ttf;base64,')); assert.ok(assets.fonts.thin.startsWith('data:font/ttf;base64,'));
+  });
+  async function verifyGuideTypography(template, templateImages) {
+    const sample = createCanvas(1080, 1300), sampleContext = sample.getContext('2d'), fonts = [];
+    const fillText = sampleContext.fillText.bind(sampleContext);
+    sampleContext.fillText = function (...args) { fonts.push(this.font); return fillText(...args); };
+    for (const input of [template.defaults, template.example]) {
+      fonts.length = 0;
+      const rendered = Engine.render(sampleContext, input, { template, images: templateImages, titleMode: 'trial', createCanvas });
+      assert.equal(rendered.valid, true);
+      assert.ok(fonts.some(font => /400 .*SahwaBodyRegular/.test(font)), 'subtitle must use the regular font even for default text');
+      if (template.fields.informationCount) assert.ok(fonts.some(font => /100 .*SahwaBodyThin/.test(font)), 'information must use the thin font');
+      assert.ok(fonts.every(font => !/SahwaBody(?:ExtraLight|Light)/.test(font)));
+    }
+  }
+  await verifyGuideTypography(Engine.BASIC_TEMPLATE, images);
+  check('basic template draws default and edited body text with the guide weights', () => {});
   const core = render(Engine.DEFAULTS);
   check('changing text does not alter fixed artwork at the upper-left logo', () => {
     const fixed = createCanvas(1080, 1300); fixed.getContext('2d').drawImage(images.background, 0, 0, 1080, 1300);
@@ -121,6 +164,8 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
   replacementContext.fillStyle = '#385772'; replacementContext.fillRect(250, 0, 100, 800);
   for (const template of assets.templates) {
     const templateImages = Object.fromEntries(await Promise.all(Object.entries(template.assets).map(async ([key, uri]) => [key, await loadImage(uri)])));
+    await verifyGuideTypography(template, templateImages);
+    check(`${template.id}: default and edited body text use the guide weights`, () => {});
     const options = { images: templateImages, template, titleMode: 'trial', createCanvas };
     function renderTemplate(input = template.defaults, additions = {}) { return Engine.render(ctx, input, { ...options, ...additions }); }
     result = renderTemplate();
@@ -179,6 +224,9 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
     if (template.id === 'psb2') {
       const plain = createCanvas(1080, 1300), plainContext = plain.getContext('2d');
       plainContext.drawImage(templateImages.background, 0, 0); plainContext.drawImage(templateImages.photoBackdrop, 0, 0);
+      const symbol = template.layout.symbol;
+      plainContext.save(); plainContext.globalAlpha = symbol.opacity;
+      plainContext.drawImage(templateImages.symbol, symbol.x, symbol.y, symbol.width, symbol.height); plainContext.restore();
       renderTemplate(template.example, { photoImage: replacement, photoMode: 'circle' });
       check('psb2: a normal photo stays in the circle and cannot form a rectangle above it', () => {
         assert.ok(equalPixels(ctx.getImageData(170, 492, 100, 40).data, plainContext.getImageData(170, 492, 100, 40).data));
