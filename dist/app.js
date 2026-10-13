@@ -2,6 +2,7 @@
   'use strict';
   const Engine = window.SahwaEngine;
   const ASSETS = window.SAHWA_ASSETS;
+  const Portrait = window.SahwaPortrait;
   const templates = [{
     ...Engine.BASIC_TEMPLATE, thumbnail: ASSETS.thumbnail,
     assets: { background: ASSETS.background, originalTitle: ASSETS.originalTitle, badge: ASSETS.badge }
@@ -18,13 +19,38 @@
   const photoError = document.getElementById('photo-error');
   const storageKey = 'sahwa-studio-v2';
   const imageCache = new Map(), photos = new Map();
-  const state = { selected: templates[0].id, drafts: {} };
+  const state = { selected: templates[0].id, quality: 3, drafts: {} };
   let template = templates[0], images = null, result = null, customFace = null, mode = 'trial';
   let raf = null, toastTimer = null, saveTimer = null, databasePromise = null;
-  let selectionVersion = 0, photoVersion = 0, ready = false, exporting = false;
+  let selectionVersion = 0, photoVersion = 0, ready = false, exporting = false, processingPhotoId = null;
 
   function readInput() { return Object.fromEntries(Engine.KEYS.map(key => [key, form.elements.namedItem(key).value])); }
   function putInput(input) { Engine.KEYS.forEach(key => { form.elements.namedItem(key).value = String(input[key] ?? ''); }); }
+  function settings() {
+    return {
+      infoEnabled: [1, 2, 3].map(i => form.elements.namedItem(`info${i}Enabled`).checked),
+      titleKashida: form.elements.titleKashida.checked,
+      photoMode: form.elements.photoMode.value,
+      grayscale: form.elements.photoGrayscale.checked
+    };
+  }
+  function putSettings(draft = {}) {
+    for (let i = 1; i <= 3; i++) form.elements.namedItem(`info${i}Enabled`).checked = draft.infoEnabled?.[i - 1] !== false;
+    form.elements.titleKashida.checked = draft.titleKashida !== false;
+    form.elements.photoMode.value = draft.photoMode === 'cutout' ? 'cutout' : 'circle';
+    form.elements.photoGrayscale.checked = draft.grayscale === true;
+  }
+  function updateInformationStates() {
+    document.querySelectorAll('.information-row').forEach((row, index) => {
+      const enabled = form.elements.namedItem(`info${index + 1}Enabled`).checked;
+      row.classList.toggle('disabled', !enabled);
+      row.querySelectorAll('.information-inputs input').forEach(input => { input.disabled = !enabled; });
+    });
+  }
+  function updateExportSize() {
+    const dimensions = Engine.exportDimensions(template, state.quality);
+    document.getElementById('export-size').textContent = `${dimensions.width} × ${dimensions.height}`;
+  }
   function transform() {
     return { zoom: Number(form.elements.photoZoom.value), x: Number(form.elements.photoX.value), y: Number(form.elements.photoY.value) };
   }
@@ -50,7 +76,8 @@
     try {
       const image = await loadImage(url);
       if (!image.width || !image.height) throw new Error('هذه الصورة غير صالحة.');
-      return { image, file, name: file.name || 'الصورة المرفوعة' };
+      const analyzed = file.type === 'image/png' ? Portrait.trimPhoto(image) : { image, hasTransparency: false };
+      return { ...analyzed, rawImage: image, file, name: file.name || 'الصورة المرفوعة' };
     } finally { URL.revokeObjectURL(url); }
   }
   function db() {
@@ -81,7 +108,7 @@
     });
   }
   function captureDraft() {
-    state.drafts[template.id] = { input: readInput(), photoTransform: transform() };
+    state.drafts[template.id] = { input: readInput(), photoTransform: transform(), ...settings() };
   }
   function persistDrafts() {
     try {
@@ -121,6 +148,15 @@
     document.getElementById('photo-name').textContent = photo?.name || 'الصورة الأصلية';
     document.getElementById('photo-controls').hidden = !photo;
     document.getElementById('photo-original-button').hidden = !photo;
+    const busy = processingPhotoId === template.id;
+    form.elements.photoMode.querySelector('option[value="cutout"]').disabled = !!photo && !photo.hasTransparency;
+    if (photo && !photo.hasTransparency && form.elements.photoMode.value === 'cutout') form.elements.photoMode.value = 'circle';
+    document.getElementById('photo-remove-background').disabled = !photo || busy || photo.hasTransparency;
+    document.getElementById('photo-remove-background').title = photo?.hasTransparency ? 'الصورة مفرغة بالفعل.' : 'تفريغ الشخص داخل المتصفح';
+    document.getElementById('photo-undo-background').hidden = !photo?.removedBackground;
+    document.getElementById('photo-undo-background').disabled = busy;
+    document.getElementById('photo-original-button').disabled = busy;
+    document.getElementById('photo-upload-button').disabled = !images || busy;
   }
   function showErrors(errors) {
     for (const key of Engine.KEYS) {
@@ -138,21 +174,22 @@
     if (!ready || !images) return;
     try {
       const input = readInput();
-      result = Engine.render(ctx, input, { images, template, titleMode: mode, photoImage: photos.get(template.id)?.image, photoTransform: transform() });
+      const preferences = settings();
+      result = Engine.render(ctx, input, { images, template, titleMode: mode, photoImage: photos.get(template.id)?.image, photoTransform: transform(), ...preferences });
       const spokenFields = [input.title, input.subtitle];
       if (template.fields.speakerName) spokenFields.push(input.speakerName);
-      for (let i = 1; i <= template.fields.informationCount; i++) spokenFields.push(`${template.fields.labels ? input[`info${i}Label`] : ''} ${input[`info${i}Value`]}`);
+      for (let i = 1; i <= template.fields.informationCount; i++) if (preferences.infoEnabled[i - 1]) spokenFields.push(`${template.fields.labels ? input[`info${i}Label`] : ''} ${input[`info${i}Value`]}`);
       canvas.setAttribute('aria-label', `معاينة ${template.name}. ${spokenFields.join('. ')}`);
       document.getElementById('title-count').textContent = `${Array.from(input.title).length} / 100`;
       document.getElementById('photo-zoom-value').textContent = `${Math.round(transform().zoom * 100)}%`;
       showErrors(result.errors);
       document.getElementById('trial-badge').hidden = !input.title.trim() || result.originalTitle || mode === 'custom';
-      downloadButton.disabled = exporting || !result.valid;
+      downloadButton.disabled = exporting || processingPhotoId === template.id || !result.valid;
       renderStatus.textContent = result.valid ? 'جاهز للتنزيل' : result.errors.every(error => error.field === 'titleFont') ? 'بانتظار خط العنوان' : 'راجع الحقول';
       renderStatus.classList.toggle('ready', result.valid);
       if (!result.valid) exportNote.textContent = result.errors[0].message;
-      else if (result.temporaryFont) exportNote.textContent = 'العنوان الجديد بخط مؤقت لحد رفع الخط الأصلي. صورة PNG بالحجم الأصلي.';
-      else exportNote.textContent = 'صورة PNG بالحجم الأصلي، بدون إضافات على التصميم.';
+      else if (result.temporaryFont) exportNote.textContent = 'PNG بدون فقد في الضغط. خط العنوان مؤقت لحد رفع الخط الأصلي.';
+      else exportNote.textContent = 'PNG بدون فقد في الضغط، وبدون إضافات على التصميم.';
       generalError.hidden = true;
     } catch {
       downloadButton.disabled = true; result = null;
@@ -169,6 +206,7 @@
     document.getElementById('speaker-field').hidden = !template.fields.speakerName;
     document.getElementById('information-section').hidden = !template.fields.informationCount;
     document.getElementById('photo-settings').hidden = !template.fields.image;
+    document.getElementById('portrait-options').hidden = !template.layout.photoCircle;
     document.getElementById('photo-hint').textContent = template.fields.imageHint || '';
     document.getElementById('template-name').textContent = template.name;
     document.getElementById('template-description').textContent = template.summary || template.description;
@@ -183,7 +221,7 @@
       const selected = button.dataset.templateId === template.id;
       button.setAttribute('aria-checked', String(selected)); button.tabIndex = selected ? 0 : -1;
     });
-    showPhotoState(); showErrors([]); photoError.textContent = '';
+    updateInformationStates(); updateExportSize(); showPhotoState(); showErrors([]); photoError.textContent = '';
   }
   async function selectTemplate(id, capture = true) {
     const next = templates.find(item => item.id === id);
@@ -192,7 +230,7 @@
     template = next; state.selected = id;
     const token = ++selectionVersion;
     ++photoVersion;
-    const draft = state.drafts[id]; putInput(draft?.input || next.defaults); putTransform(draft?.photoTransform);
+    const draft = state.drafts[id]; putInput(draft?.input || next.defaults); putTransform(draft?.photoTransform); putSettings(draft);
     updateFields(); images = null; result = null; downloadButton.disabled = true;
     document.getElementById('photo-upload-button').disabled = true;
     renderStatus.textContent = 'جارٍ تجهيز القالب…'; renderStatus.classList.remove('ready');
@@ -202,7 +240,10 @@
       const loadedImages = await imageCache.get(id);
       if (!photos.has(id) && next.fields.image) {
         let photo = null;
-        try { const saved = await stored('photos', id, 'get'); if (saved?.file) photo = await loadPhoto(saved.file); } catch { /* Device storage is optional. */ }
+        try {
+          const saved = await stored('photos', id, 'get');
+          if (saved?.file) photo = { ...await loadPhoto(saved.file), originalFile: saved.originalFile, removedBackground: saved.removedBackground === true };
+        } catch { /* Device storage is optional. */ }
         if (!photos.has(id)) photos.set(id, photo);
       }
       if (token !== selectionVersion) return;
@@ -255,18 +296,25 @@
     if (saved?.drafts && typeof saved.drafts === 'object') {
       for (const item of templates) {
         const draft = saved.drafts[item.id];
-        if (draft?.input && typeof draft.input === 'object') state.drafts[item.id] = { input: Engine.cleanInput(draft.input), photoTransform: draft.photoTransform || {} };
+        if (draft?.input && typeof draft.input === 'object') state.drafts[item.id] = { ...draft, input: Engine.cleanInput(draft.input), photoTransform: draft.photoTransform || {} };
       }
       if (templates.some(item => item.id === saved.selected)) state.selected = saved.selected;
+      if ([1, 2, 3].includes(saved.quality)) state.quality = saved.quality;
     } else {
       const previous = JSON.parse(localStorage.getItem('sahwa-simple-v1-input'));
       if (previous && typeof previous === 'object') state.drafts[templates[0].id] = { input: Engine.cleanInput(previous) };
     }
   } catch { /* Local storage is optional, including when opened as a local file. */ }
-  putInput(template.defaults); buildPicker(); updateFields(); showFontState();
+  putInput(template.defaults); putSettings(); document.getElementById('quality-select').value = String(state.quality);
+  buildPicker(); updateFields(); showFontState();
   form.addEventListener('submit', event => event.preventDefault());
   form.addEventListener('input', event => {
-    if (Engine.KEYS.includes(event.target.name) || ['photoZoom', 'photoX', 'photoY'].includes(event.target.name)) { scheduleDraw(); saveInput(); }
+    if (Engine.KEYS.includes(event.target.name) || ['photoZoom', 'photoX', 'photoY', 'photoMode', 'photoGrayscale', 'titleKashida', 'info1Enabled', 'info2Enabled', 'info3Enabled'].includes(event.target.name)) {
+      updateInformationStates(); scheduleDraw(); saveInput();
+    }
+  });
+  document.getElementById('quality-select').addEventListener('change', event => {
+    state.quality = Number(event.target.value); updateExportSize(); persistDrafts();
   });
   window.addEventListener('pagehide', () => { captureDraft(); persistDrafts(); });
   document.getElementById('example-button').addEventListener('click', () => {
@@ -303,7 +351,9 @@
       if (file.size > 20 * 1024 * 1024) throw new Error('حجم الصورة يتجاوز 20 ميجابايت. استخدم نسخة أصغر.');
       const photo = await loadPhoto(file);
       if (token !== photoVersion || template.id !== id) return;
-      photos.set(id, photo); putTransform(); showPhotoState(); draw(); saveInput();
+      photos.set(id, photo); putTransform();
+      if (template.layout.photoCircle) form.elements.photoMode.value = photo.hasTransparency ? 'cutout' : 'circle';
+      showPhotoState(); draw(); saveInput();
       photoError.textContent = '';
       try { await stored('photos', id, 'put', { file }); }
       catch { if (template.id === id) photoError.textContent = 'الصورة جاهزة للجلسة الحالية؛ تعذّر حفظها على هذا الجهاز.'; }
@@ -315,19 +365,56 @@
     try { await stored('photos', id, 'delete'); } catch { if (template.id === id) photoError.textContent = 'تمت استعادة الأصل؛ تعذّر تحديث حفظ الصورة على الجهاز.'; }
   });
   document.getElementById('photo-reset-button').addEventListener('click', () => { putTransform(); draw(); saveInput(); });
+  async function persistPhoto(id, photo) {
+    try { await stored('photos', id, 'put', { file: photo.file, originalFile: photo.originalFile, removedBackground: !!photo.removedBackground }); }
+    catch { if (template.id === id) photoError.textContent = 'الصورة جاهزة للجلسة الحالية؛ تعذّر حفظها على هذا الجهاز.'; }
+  }
+  document.getElementById('photo-remove-background').addEventListener('click', async () => {
+    const photo = photos.get(template.id); if (!photo || photo.hasTransparency || processingPhotoId) return;
+    const id = template.id, token = ++photoVersion; processingPhotoId = id; showPhotoState(); draw();
+    try {
+      const blob = await Portrait.removePersonBackground(photo.rawImage, message => {
+        if (template.id === id && token === photoVersion) photoError.textContent = message;
+      });
+      const filename = `${photo.file.name.replace(/\.[^.]+$/, '')}-cutout.png`;
+      const processed = await loadPhoto(new File([blob], filename, { type: 'image/png' }));
+      if (template.id !== id || token !== photoVersion) return;
+      processed.originalFile = photo.originalFile || photo.file; processed.removedBackground = true;
+      photos.set(id, processed); form.elements.photoMode.value = 'cutout'; putTransform();
+      photoError.textContent = ''; draw(); saveInput(); await persistPhoto(id, processed);
+      toast('تم تفريغ صورة الشخص. راجع الحواف؛ يمكنك إلغاء التفريغ.');
+    } catch (error) {
+      if (template.id === id && token === photoVersion) photoError.textContent = error.message || 'تعذّر التفريغ. يمكنك استخدام وضع الدائرة.';
+    } finally { processingPhotoId = null; showPhotoState(); draw(); }
+  });
+  document.getElementById('photo-undo-background').addEventListener('click', async () => {
+    const photo = photos.get(template.id); if (!photo?.originalFile) return;
+    const id = template.id, token = ++photoVersion;
+    try {
+      const restored = await loadPhoto(photo.originalFile);
+      if (id !== template.id || token !== photoVersion) return;
+      photos.set(id, restored); form.elements.photoMode.value = restored.hasTransparency ? 'cutout' : 'circle';
+      putTransform(); photoError.textContent = ''; showPhotoState(); draw(); saveInput(); await persistPhoto(id, restored);
+    } catch (error) { if (id === template.id) photoError.textContent = error.message || 'تعذّر استعادة الصورة.'; }
+  });
   downloadButton.addEventListener('click', async () => {
-    draw(); if (!result?.valid || exporting) return;
+    draw(); if (!result?.valid || exporting || processingPhotoId === template.id) return;
     const exported = result, id = template.id;
     exporting = true; downloadButton.disabled = true;
     const text = downloadButton.querySelector('span'); text.textContent = 'جارٍ تجهيز الصورة…';
+    let exportCanvas = null;
     try {
-      const blob = await new Promise((resolve, reject) => canvas.toBlob(output => output ? resolve(output) : reject(new Error('تعذّر إنشاء الصورة.')), 'image/png'));
+      const dimensions = Engine.exportDimensions(template, state.quality);
+      exportCanvas = document.createElement('canvas'); exportCanvas.width = dimensions.width; exportCanvas.height = dimensions.height;
+      const exportResult = Engine.render(exportCanvas.getContext('2d'), readInput(), { images, template, titleMode: mode, photoImage: photos.get(template.id)?.image, photoTransform: transform(), ...settings(), renderScale: dimensions.scale });
+      if (!exportResult.valid) throw new Error(exportResult.errors[0].message);
+      const blob = await new Promise((resolve, reject) => exportCanvas.toBlob(output => output ? resolve(output) : reject(new Error('تعذّر إنشاء الصورة بهذه الدقة. جرّب الجودة العالية بدل القصوى.')), 'image/png'));
       const url = URL.createObjectURL(blob), anchor = document.createElement('a');
-      anchor.href = url; anchor.download = `sahwa-${id}${exported.temporaryFont ? '-demo' : ''}-${new Date().toISOString().slice(0, 10)}.png`;
+      anchor.href = url; anchor.download = `sahwa-${id}${exported.temporaryFont ? '-demo' : ''}-${dimensions.width}x${dimensions.height}-${new Date().toISOString().slice(0, 10)}.png`;
       document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
       toast(exported.temporaryFont ? 'تم تنزيل التصميم بخط العنوان المؤقت.' : 'تم تنزيل التصميم بالحجم الأصلي.');
     } catch (error) { toast(error.message || 'تعذّر تنزيل الصورة. أعد المحاولة.'); }
-    finally { exporting = false; text.textContent = 'تنزيل التصميم PNG'; draw(); }
+    finally { if (exportCanvas) { exportCanvas.width = 1; exportCanvas.height = 1; } exporting = false; text.textContent = 'تنزيل التصميم PNG'; draw(); }
   });
 
   try {

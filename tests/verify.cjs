@@ -8,6 +8,7 @@ const runtimeRoot = process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES;
 const runtimeRequire = runtimeRoot ? createRequire(path.join(runtimeRoot, '..', 'package.json')) : require;
 const { createCanvas, loadImage, GlobalFonts } = runtimeRequire('@napi-rs/canvas');
 const Engine = require('../dist/engine.js');
+const Portrait = require('../dist/portrait.js');
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'tmp', 'verification');
 fs.mkdirSync(output, { recursive: true });
@@ -81,6 +82,32 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
     const exportedPatch = ctx.getImageData(90, 80, 110, 130).data;
     assert.deepEqual(exportedPatch, originalPatch); assert.equal(core.valid, true);
   });
+  result = Engine.render(ctx, { ...Engine.DEFAULTS, info3Value: 'تفاصيل '.repeat(100) }, { images, infoEnabled: [true, true, false] });
+  check('an information switch hides its marker and skips validation without erasing the draft', () => {
+    assert.equal(result.valid, true); assert.equal(result.informationCount, 2); assert.equal(result.input.info3Value, 'تفاصيل '.repeat(100).trim());
+    assert.ok(equalPixels(ctx.getImageData(710, 1010, 63, 65).data, fixedContext.getImageData(710, 1010, 63, 65).data));
+  });
+  result = Engine.render(ctx, Engine.DEFAULTS, { images, infoEnabled: [false, false, false] });
+  check('all information points may be turned off', () => { assert.equal(result.valid, true); assert.equal(result.informationCount, 0); });
+  result = Engine.render(ctx, { ...Engine.EXAMPLE, title: 'محمد\nكمال' }, { images, titleMode: 'trial' });
+  check('Arabic title stretching fills more of the title area while preserving letters and line breaks', () => {
+    assert.equal(result.valid, true); assert.ok(result.kashidaCount > 0);
+    assert.equal(result.titleLines.join('\n').replace(/ـ/g, ''), 'محمد\nكمال');
+    ctx.font = `700 ${result.titleSize}px "SahwaBodyBold"`;
+    for (const line of result.titleLines) assert.ok(ctx.measureText(line).width <= Engine.TEMPLATE.title.width);
+  });
+  result = Engine.render(ctx, { ...Engine.EXAMPLE, title: 'محمد\nكمال' }, { images, titleMode: 'trial', titleKashida: false });
+  check('the author can turn automatic kashida off', () => { assert.equal(result.kashidaCount, 0); assert.equal(result.titleLines.join('\n'), 'محمد\nكمال'); });
+  check('kashida respects non-joining letters, lam-alef and author-supplied stretching', () => {
+    assert.deepEqual(Engine.kashidaSlots('لا'), []); assert.deepEqual(Engine.kashidaSlots('آدم'), []);
+    assert.deepEqual(Engine.kashidaSlots('مـحمد'), []);
+    assert.equal(Engine.kashidaSlots('رامي').length, 1);
+    assert.equal(Engine.kashidaSlots('رامي')[0].index, 3);
+    const text = 'مُحَمَّد', stretched = Engine.stretchLine(ctx, text, 500).text;
+    assert.equal(stretched.replace(/ـ/g, ''), text);
+  });
+  result = Engine.render(ctx, { ...Engine.DEFAULTS, title: 'العنوان\n\nالرئيسي' }, { images, titleMode: 'trial' });
+  check('a blank middle line cannot bypass the two-line heading limit', () => { assert.equal(result.valid, false); assert.ok(result.errors.some(error => error.field === 'title')); });
   check('both Photoshop templates are bundled with separate field definitions', () => {
     assert.equal(assets.templates.length, 2);
     assert.equal(assets.templates[0].fields.informationCount, 3); assert.equal(assets.templates[0].fields.speakerName, true);
@@ -123,7 +150,16 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
       assert.equal(result.valid, false); assert.ok(result.errors.some(error => error.field === 'title'));
     });
     result = renderTemplate({ ...template.defaults, subtitle: 'سطر أول\nسطر ثان' });
-    check(`${template.id}: single-line subtitle cannot overlap the other fields`, () => {
+    check(`${template.id}: Enter creates two subtitle lines at the original font size`, () => {
+      assert.equal(result.valid, true); assert.equal(result.subtitleSize, template.layout.subtitle.max); assert.equal(result.subtitleLines.length, 2);
+    });
+    result = renderTemplate({ ...template.defaults, subtitle: 'يا هلا والله بكم أهلا وسهلا استنونا في الدرس الأسبوعي الأول يوم السبت' });
+    check(`${template.id}: a longer subtitle wraps to two lines rather than shrinking`, () => {
+      assert.equal(result.valid, true); assert.equal(result.subtitleSize, template.layout.subtitle.max); assert.equal(result.subtitleLines.length, 2);
+    });
+    fs.writeFileSync(path.join(output, `${template.id}-two-line-subtitle.png`), canvas.toBuffer('image/png'));
+    result = renderTemplate({ ...template.defaults, subtitle: 'سطر أول\nسطر ثان\nسطر ثالث' });
+    check(`${template.id}: a third subtitle line cannot overlap the other fields`, () => {
       assert.equal(result.valid, false); assert.ok(result.errors.some(error => error.field === 'subtitle'));
     });
     result = renderTemplate(template.example, { photoImage: replacement, photoTransform: { zoom: 1.5, x: 30, y: -15 } });
@@ -141,6 +177,15 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
       assert.equal(result.valid, true); assert.equal(result.customPhoto, false); assert.ok(equalPixels(ctx.getImageData(0, 0, 1080, 1300).data, originalPixels));
     });
     if (template.id === 'psb2') {
+      const plain = createCanvas(1080, 1300), plainContext = plain.getContext('2d');
+      plainContext.drawImage(templateImages.background, 0, 0); plainContext.drawImage(templateImages.photoBackdrop, 0, 0);
+      renderTemplate(template.example, { photoImage: replacement, photoMode: 'circle' });
+      check('psb2: a normal photo stays in the circle and cannot form a rectangle above it', () => {
+        assert.ok(equalPixels(ctx.getImageData(170, 492, 100, 40).data, plainContext.getImageData(170, 492, 100, 40).data));
+        assert.ok(equalPixels(ctx.getImageData(447, 580, 30, 22).data, plainContext.getImageData(447, 580, 30, 22).data));
+        assert.equal(equalPixels(ctx.getImageData(200, 750, 100, 100).data, plainContext.getImageData(200, 750, 100, 100).data), false);
+      });
+      fs.writeFileSync(path.join(output, 'psb2-circle-photo.png'), canvas.toBuffer('image/png'));
       result = renderTemplate({ ...template.defaults, info2Value: '', info3Value: '', info2Label: 'ignored hidden label', info3Label: 'ignored hidden label' });
       check('psb2: empty information removes its original marker and text', () => {
         assert.equal(result.valid, true); assert.equal(result.informationCount, 1);
@@ -149,6 +194,8 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
       });
       result = renderTemplate({ ...template.defaults, speakerName: 'اسم طويل '.repeat(40) });
       check('psb2: lecturer name overflow is reported', () => { assert.equal(result.valid, false); assert.ok(result.errors.some(error => error.field === 'speakerName')); });
+      result = renderTemplate(template.defaults, { infoEnabled: [false, false, false] });
+      check('psb2: every information point can be disabled independently of its text', () => { assert.equal(result.valid, true); assert.equal(result.informationCount, 0); });
     } else {
       result = renderTemplate({ ...template.defaults, speakerName: 'طويل '.repeat(100), info1Value: 'طويل '.repeat(100), info1Label: 'hidden' });
       check('psb3: hidden lecturer and information fields cannot affect export', () => {
@@ -167,5 +214,33 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
       assert.ok(box.x + box.width >= frame.x + frame.width - 0.01 && box.y + box.height >= frame.y + frame.height - 0.01);
     }
   });
-  process.stdout.write(JSON.stringify({ passed, templates: 3, pngs: fs.readdirSync(output).filter(filename => filename.endsWith('.png')), browser_tested: false }) + '\n');
+  check('confidence matting keeps a person opaque and background transparent', () => {
+    const alpha = Portrait.confidenceAlpha(new Float32Array([0, 0.1, 0.5, 0.95, 1, NaN]));
+    assert.equal(alpha[0], 0); assert.equal(alpha[1], 0); assert.ok(alpha[2] > 0 && alpha[2] < 255); assert.equal(alpha[3], 255); assert.equal(alpha[4], 255); assert.equal(alpha[5], 0);
+  });
+  const transparent = createCanvas(600, 800), transparentContext = transparent.getContext('2d');
+  transparentContext.fillStyle = '#694626'; transparentContext.fillRect(200, 100, 200, 650);
+  const trimmed = Portrait.trimPhoto(transparent, createCanvas);
+  check('transparent PNG margins are removed so a cutout fills its frame', () => {
+    assert.equal(trimmed.hasTransparency, true); assert.ok(trimmed.image.width < 220); assert.ok(trimmed.image.height < 670);
+    assert.equal(Portrait.trimPhoto(replacement, createCanvas).hasTransparency, false);
+    assert.throws(() => Portrait.trimPhoto(createCanvas(100, 100), createCanvas));
+  });
+  const portraitTemplate = assets.templates[0];
+  const portraitImages = Object.fromEntries(await Promise.all(Object.entries(portraitTemplate.assets).map(async ([key, uri]) => [key, await loadImage(uri)])));
+  result = Engine.render(ctx, portraitTemplate.example, { template: portraitTemplate, images: portraitImages, titleMode: 'trial', photoImage: trimmed.image, photoMode: 'cutout', createCanvas });
+  check('a transparent portrait may extend upward through the cutout frame', () => { assert.equal(result.valid, true); assert.equal(result.customPhoto, true); });
+  fs.writeFileSync(path.join(output, 'psb2-cutout-photo.png'), canvas.toBuffer('image/png'));
+  const dimensions = Engine.exportDimensions(Engine.BASIC_TEMPLATE, 3);
+  const high = createCanvas(dimensions.width, dimensions.height);
+  result = Engine.render(high.getContext('2d'), { ...Engine.EXAMPLE, title: 'محمد\nكمال', subtitle: 'جملة واضحة\nعلى سطرين' }, { images, titleMode: 'trial', renderScale: 3 });
+  const highPng = high.toBuffer('image/png'), highImage = await loadImage(highPng);
+  check('maximum-quality PNG is rerendered at 3240 by 3900 pixels', () => {
+    assert.equal(result.valid, true); assert.equal(highImage.width, 3240); assert.equal(highImage.height, 3900);
+    assert.deepEqual(Engine.exportDimensions(Engine.BASIC_TEMPLATE, 1), { width: 1080, height: 1300, scale: 1 });
+    assert.deepEqual(Engine.exportDimensions(Engine.BASIC_TEMPLATE, 2), { width: 2160, height: 2600, scale: 2 });
+    assert.throws(() => Engine.exportDimensions(Engine.BASIC_TEMPLATE, 4));
+  });
+  fs.writeFileSync(path.join(output, 'maximum-quality.png'), highPng);
+  process.stdout.write(JSON.stringify({ passed, templates: 3, browser_tested: false, browser_segmentation_tested: false }) + '\n');
 })().catch(error => { process.stderr.write(error.stack + '\n'); process.exitCode = 1; });

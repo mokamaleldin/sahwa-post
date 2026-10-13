@@ -1,8 +1,9 @@
 (function (root, factory) {
-  const api = factory();
+  const joining = typeof module === 'object' && module.exports ? require('./arabic-joining.js') : root.SahwaArabicJoining;
+  const api = factory(joining);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.SahwaEngine = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (joining) {
   'use strict';
   const TEMPLATE = Object.freeze({
     id: 'sahwa-simple-v1', width: 1080, height: 1300, color: '#752026',
@@ -75,6 +76,61 @@
     if (lines && lines.length <= maxLines) return { size: spec.min, lines, family, weight };
     return null;
   }
+  function fixedFit(ctx, text, spec, family, weight, maxLines = 2) {
+    font(ctx, spec.max, family, weight);
+    const lines = wrap(ctx, text, spec.width);
+    return lines && lines.length <= maxLines ? { size: spec.max, lines, family, weight } : null;
+  }
+  function kashidaSlots(text) {
+    // Explicit stretching/join controls belong to the author; leave them intact.
+    if (/[\u0640\u200c\u200d]/u.test(text)) return [];
+    const letters = Array.from(text), slots = [];
+    for (let i = 0; i < letters.length - 1; i++) {
+      if (!joining.D.includes(letters[i])) continue;
+      let next = i + 1;
+      while (next < letters.length && /\p{Mark}/u.test(letters[next])) next++;
+      const right = letters[next];
+      if (!right || (!joining.D.includes(right) && !joining.R.includes(right))) continue;
+      if (letters[i] === 'ل' && /[اأإآٱ]/u.test(right)) continue;
+      slots.push({ index: next, priority: /[سشصض]/u.test(letters[i]) ? 0 : 1 });
+    }
+    return slots.sort((a, b) => a.priority - b.priority || b.index - a.index);
+  }
+  function stretchLine(ctx, text, targetWidth) {
+    const letters = Array.from(text), slots = kashidaSlots(text);
+    const originalWidth = width(ctx, text);
+    const target = Math.min(targetWidth, originalWidth * 1.7);
+    const counts = new Map();
+    const compose = () => letters.map((letter, index) => 'ـ'.repeat(counts.get(index) || 0) + letter).join('');
+    let stretched = text, count = 0, measured = originalWidth;
+    for (let round = 0; round < 3 && count < 8; round++) {
+      let advanced = false;
+      for (const slot of slots) {
+        const previous = counts.get(slot.index) || 0;
+        if (previous >= 3 || count >= 8) continue;
+        counts.set(slot.index, previous + 1);
+        const candidate = compose(), candidateWidth = width(ctx, candidate);
+        if (candidateWidth > target + 0.5 || candidateWidth <= measured + 0.1) {
+          counts.set(slot.index, previous); continue;
+        }
+        stretched = candidate; measured = candidateWidth; count++; advanced = true;
+      }
+      if (!advanced) break;
+    }
+    return { text: stretched, count };
+  }
+  function layoutTitle(ctx, text, spec, family, enabled = true) {
+    const fitted = fit(ctx, text, spec, family, 700, 2);
+    if (!fitted) return null;
+    font(ctx, fitted.size, family, 700);
+    const stretched = fitted.lines.map(line => enabled ? stretchLine(ctx, line, spec.width * 0.94) : { text: line, count: 0 });
+    return { ...fitted, lines: stretched.map(line => line.text), kashidaCount: stretched.reduce((sum, line) => sum + line.count, 0) };
+  }
+  function exportDimensions(template, scale = 3) {
+    scale = Number(scale);
+    if (![1, 2, 3].includes(scale)) throw new RangeError('اختر جودة التنزيل من القائمة.');
+    return { width: template.width * scale, height: template.height * scale, scale };
+  }
   function drawText(ctx, layout, right, baselines, align = 'right') {
     font(ctx, layout.size, layout.family, layout.weight);
     ctx.textAlign = align;
@@ -88,52 +144,55 @@
     const scale = (frame.fit === 'contain' ? Math.min : Math.max)(frame.width / image.width, frame.height / image.height) * zoom;
     const width = image.width * scale, height = image.height * scale;
     return {
-      x: frame.x + (frame.width - width) / 2 + Math.max(0, (width - frame.width) / 2) * position('x'),
-      y: frame.y + (frame.height - height) / 2 + Math.max(0, (height - frame.height) / 2) * position('y'),
+      x: frame.x + (frame.width - width) / 2 + Math.abs((width - frame.width) / 2) * position('x'),
+      y: frame.y + (frame.height - height) / 2 + Math.abs((height - frame.height) / 2) * position('y'),
       width, height
     };
   }
   function drawPhoto(ctx, images, template, options) {
-    const { photoImage, photoTransform, createCanvas } = options;
+    const { photoImage, photoTransform, createCanvas, photoMode = 'circle', grayscale = false, renderScale = 1 } = options;
     if (!photoImage) {
       if (images.defaultPhoto) ctx.drawImage(images.defaultPhoto, 0, 0, template.width, template.height);
       return;
     }
     if (images.photoBackdrop) ctx.drawImage(images.photoBackdrop, 0, 0, template.width, template.height);
-    const frame = template.layout.photo;
+    const frame = template.layout.photoCircle && photoMode !== 'cutout' ? template.layout.photoCircle : template.layout.photo;
+    const masked = frame.shape === 'mask' && !!images.photoMask;
     const geometry = photoGeometry(photoImage, frame, photoTransform);
     let buffer = photoBuffers.get(ctx);
-    if (!buffer || buffer.width !== template.width || buffer.height !== template.height) {
-      buffer = createCanvas ? createCanvas(template.width, template.height) : document.createElement('canvas');
-      buffer.width = template.width; buffer.height = template.height;
+    if (!buffer || buffer.width !== template.width * renderScale || buffer.height !== template.height * renderScale) {
+      buffer = createCanvas ? createCanvas(template.width * renderScale, template.height * renderScale) : document.createElement('canvas');
+      buffer.width = template.width * renderScale; buffer.height = template.height * renderScale;
       photoBuffers.set(ctx, buffer);
     }
     const photoContext = buffer.getContext('2d');
     photoContext.clearRect(0, 0, buffer.width, buffer.height);
     photoContext.save();
-    if (!images.photoMask) {
+    photoContext.scale(renderScale, renderScale);
+    if (!masked) {
       photoContext.beginPath();
       if (frame.shape === 'ellipse') photoContext.ellipse(frame.x + frame.width / 2, frame.y + frame.height / 2, frame.width / 2, frame.height / 2, 0, 0, Math.PI * 2);
       else photoContext.rect(frame.x, frame.y, frame.width, frame.height);
       photoContext.clip();
     }
-    if (frame.grayscale) photoContext.filter = 'grayscale(1)';
+    if (grayscale) photoContext.filter = 'grayscale(1)';
     photoContext.drawImage(photoImage, geometry.x, geometry.y, geometry.width, geometry.height);
     photoContext.filter = 'none';
-    if (images.photoMask) {
+    if (masked) {
       photoContext.globalCompositeOperation = 'destination-in';
       photoContext.drawImage(images.photoMask, 0, 0, template.width, template.height);
     }
     photoContext.restore();
-    ctx.drawImage(buffer, 0, 0);
+    ctx.drawImage(buffer, 0, 0, template.width, template.height);
   }
   function render(ctx, rawInput, options) {
     const input = cleanInput(rawInput);
-    const { images, titleMode = 'original', template = BASIC_TEMPLATE } = options;
+    const { images, titleMode = 'original', template = BASIC_TEMPLATE, infoEnabled = [true, true, true], titleKashida = true, renderScale = 1 } = options;
     const layout = template.layout;
     const fields = template.fields;
     const errors = [];
     ctx.save();
+    ctx.scale(renderScale, renderScale);
     ctx.clearRect(0, 0, template.width, template.height);
     ctx.drawImage(images.background, 0, 0, template.width, template.height);
     if (fields.image) {
@@ -145,31 +204,34 @@
     ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'rtl';
     if ('fontKerning' in ctx) ctx.fontKerning = 'normal';
 
-    let titleSize = null;
-    const original = sameText(input.title, template.defaults.title) && !!images.originalTitle && titleMode !== 'custom';
+    let titleSize = null, titleLines = [], kashidaCount = 0, subtitleSize = null, subtitleLines = [];
+    const original = sameText(input.title, template.defaults.title) && input.title.split('\n').length <= 2 && !!images.originalTitle && titleMode !== 'custom';
     if (!input.title) errors.push({ field: 'title', message: 'اكتب العنوان الرئيسي.' });
     else if (original) ctx.drawImage(images.originalTitle, 0, 0, template.width, template.height);
     else {
       const family = titleMode === 'custom' ? 'SahwaTitle' : 'SahwaBodyBold';
-      const fitted = fit(ctx, input.title, layout.title, family, 700, 2);
+      const fitted = layoutTitle(ctx, input.title, layout.title, family, titleKashida);
       if (!fitted) errors.push({ field: 'title', message: 'العنوان لا يناسب مساحة القالب. اختصره أو وزّعه على سطرين أقصر.' });
       else {
         titleSize = fitted.size;
+        titleLines = fitted.lines; kashidaCount = fitted.kashidaCount;
         const baselines = fitted.lines.length === 1 ? [layout.title.singleBaseline ?? (layout.title.baselines[0] + layout.title.baselines[1]) / 2] : layout.title.baselines;
         drawText(ctx, fitted, layout.title.right, baselines, layout.title.align);
       }
       if (titleMode === 'original') errors.push({ field: 'titleFont', message: 'ارفع خط Asal Arabic Bold لتصدير العنوان الجديد بنفس الخط، أو فعّل الخط المؤقت للتجربة.' });
     }
 
-    if (fields.subtitle && input.subtitle && images.originalSubtitle && sameText(input.subtitle, template.defaults.subtitle)) {
+    if (fields.subtitle && input.subtitle && images.originalSubtitle && input.subtitle === normalize(template.defaults.subtitle)) {
       ctx.drawImage(images.originalSubtitle, 0, 0, template.width, template.height);
     } else if (fields.subtitle && input.subtitle) {
-      const fitted = fit(ctx, input.subtitle, layout.subtitle, 'SahwaBodyExtraLight', 200, layout.subtitle.maxLines || 2);
-      if (!fitted) errors.push({ field: 'subtitle', message: 'الجملة الثانوية أطول من مساحة القالب. اختصرها قليلًا.' });
+      const fitted = fixedFit(ctx, input.subtitle, layout.subtitle, 'SahwaBodyExtraLight', 200, 2);
+      if (!fitted) errors.push({ field: 'subtitle', message: 'الجملة الثانوية تتجاوز سطرين بحجمها الطبيعي. اختصرها أو اختر موضع السطر الثاني بـ Enter.' });
       else {
+        subtitleSize = fitted.size; subtitleLines = fitted.lines;
+        const lineHeight = layout.subtitle.lineHeight || layout.subtitle.max * 1.45;
         const baselines = fitted.lines.length === 1
           ? [layout.subtitle.baseline]
-          : [layout.subtitle.baseline - layout.subtitle.lineHeight / 2, layout.subtitle.baseline + layout.subtitle.lineHeight / 2];
+          : [layout.subtitle.baseline - lineHeight / 2, layout.subtitle.baseline + lineHeight / 2];
         drawText(ctx, fitted, layout.subtitle.right, baselines, layout.subtitle.align);
       }
     }
@@ -184,6 +246,7 @@
     }
     let informationCount = 0;
     for (let i = 1; i <= fields.informationCount; i++) {
+      if (infoEnabled[i - 1] === false) continue;
       const label = fields.labels ? input[`info${i}Label`] : '';
       const value = input[`info${i}Value`];
       if (!value) {
@@ -202,7 +265,7 @@
       informationCount++;
     }
     ctx.restore();
-    return { valid: errors.length === 0, errors, input, titleSize, originalTitle: original, informationCount, temporaryFont: titleMode === 'trial' && !original, templateId: template.id, customPhoto: !!options.photoImage && fields.image };
+    return { valid: errors.length === 0, errors, input, titleSize, titleLines, kashidaCount, subtitleSize, subtitleLines, originalTitle: original, informationCount, temporaryFont: titleMode === 'trial' && !original, templateId: template.id, customPhoto: !!options.photoImage && fields.image };
   }
   function parseFontNames(buffer) {
     const view = new DataView(buffer);
@@ -240,5 +303,5 @@
   function isOriginalFont(names) {
     return names.some(item => item.id === 6 && /^(?:itf)?asalarabic[-_ ]?bold$/i.test(item.text.replace(/^[A-Z]{6}\+/, '')));
   }
-  return { TEMPLATE, BASIC_TEMPLATE, DEFAULTS, EXAMPLE, KEYS, normalize, cleanInput, isOriginalTitle, wrap, fit, photoGeometry, render, parseFontNames, isOriginalFont };
+  return { TEMPLATE, BASIC_TEMPLATE, DEFAULTS, EXAMPLE, KEYS, normalize, cleanInput, isOriginalTitle, wrap, fit, fixedFit, kashidaSlots, stretchLine, layoutTitle, exportDimensions, photoGeometry, render, parseFontNames, isOriginalFont };
 });

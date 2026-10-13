@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#752026">
   <meta name="description" content="املأ حقول قالب صحوة، راجع المعاينة، ونزّل بوستًا جاهزًا للنشر.">
   <title>استوديو صحوة — قوالب البوستات</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.1.0">
 </head>
 <body id="top">
   <header class="site-header">
@@ -30,27 +30,34 @@
             <div class="label-row"><label for="title">العنوان الرئيسي <span class="required">*</span></label><span id="title-count" class="counter"></span></div>
             <textarea id="title" name="title" rows="2" maxlength="100" placeholder="اكتب عنوان البوست" aria-describedby="title-hint title-error" required></textarea>
             <p class="field-hint" id="title-hint">سطر أو سطران. يمكنك الضغط على Enter لاختيار موضع السطر الثاني.</p><p class="field-error" id="title-error"></p>
+            <label class="inline-option" for="title-kashida"><input type="checkbox" id="title-kashida" name="titleKashida" checked><span>تنسيق العنوان بالكشيدة تلقائيًا</span></label>
           </div>
           <div class="field" id="subtitle-field">
             <div class="label-row"><label for="subtitle">الجملة الثانوية</label><span class="optional">اختياري</span></div>
-            <textarea id="subtitle" name="subtitle" rows="2" maxlength="180" placeholder="جملة قصيرة تشرح العنوان" aria-describedby="subtitle-error"></textarea><p class="field-error" id="subtitle-error"></p>
+            <textarea id="subtitle" name="subtitle" rows="2" maxlength="180" placeholder="جملة قصيرة تشرح العنوان" aria-describedby="subtitle-hint subtitle-error"></textarea><p class="field-hint" id="subtitle-hint">بحجم ثابت، سطر أو سطران. Enter يبدأ سطرًا جديدًا، والجملة الطويلة تلتف تلقائيًا.</p><p class="field-error" id="subtitle-error"></p>
           </div>
           <div class="field" id="speaker-field" hidden>
             <div class="label-row"><label for="speakerName">اسم الأستاذ</label><span class="optional">اختياري</span></div>
             <input id="speakerName" name="speakerName" maxlength="70" placeholder="اكتب اسم الأستاذ" aria-describedby="speakerName-error"><p class="field-error" id="speakerName-error"></p>
           </div>
           <section id="information-section" aria-label="نقاط المعلومات">
-          <div class="section-divider"><h3>نقاط المعلومات</h3><p>اترك الخانة فارغة لإخفائها من التصميم.</p></div>
+          <div class="section-divider"><h3>نقاط المعلومات</h3><p>أوقف أي معلومة لإخفائها مع علامتها، أو اتركها فارغة.</p></div>
           <div class="information-fields">
-            <fieldset class="information-row"><legend><span>١</span> المعلومة الأولى</legend><div class="information-inputs"><div><label for="info1Label">العنوان <span>اختياري</span></label><input id="info1Label" name="info1Label" maxlength="25" placeholder="مثلًا: المكان"></div><div><label for="info1Value">المعلومة</label><input id="info1Value" name="info1Value" maxlength="80" placeholder="مثلًا: مركز بلاد الشام" aria-describedby="info1Value-error"></div></div><p class="field-error" id="info1Value-error"></p></fieldset>
-            <fieldset class="information-row"><legend><span>٢</span> المعلومة الثانية</legend><div class="information-inputs"><div><label for="info2Label">العنوان <span>اختياري</span></label><input id="info2Label" name="info2Label" maxlength="25" placeholder="مثلًا: التاريخ"></div><div><label for="info2Value">المعلومة</label><input id="info2Value" name="info2Value" maxlength="80" placeholder="اكتب التاريخ أو الوقت" aria-describedby="info2Value-error"></div></div><p class="field-error" id="info2Value-error"></p></fieldset>
-            <fieldset class="information-row"><legend><span>٣</span> المعلومة الثالثة</legend><div class="information-inputs"><div><label for="info3Label">العنوان <span>اختياري</span></label><input id="info3Label" name="info3Label" maxlength="25" placeholder="مثلًا: التسجيل"></div><div><label for="info3Value">المعلومة</label><input id="info3Value" name="info3Value" maxlength="80" placeholder="اكتب المعلومة الثالثة" aria-describedby="info3Value-error"></div></div><p class="field-error" id="info3Value-error"></p></fieldset>
+            <fieldset class="information-row"><legend><label class="information-toggle" for="info1-enabled"><span>١</span> المعلومة الأولى <input type="checkbox" id="info1-enabled" name="info1Enabled" checked role="switch"></label></legend><div class="information-inputs"><div><label for="info1Label">العنوان <span>اختياري</span></label><input id="info1Label" name="info1Label" maxlength="25" placeholder="مثلًا: المكان"></div><div><label for="info1Value">المعلومة</label><input id="info1Value" name="info1Value" maxlength="80" placeholder="مثلًا: مركز بلاد الشام" aria-describedby="info1Value-error"></div></div><p class="field-error" id="info1Value-error"></p></fieldset>
+            <fieldset class="information-row"><legend><label class="information-toggle" for="info2-enabled"><span>٢</span> المعلومة الثانية <input type="checkbox" id="info2-enabled" name="info2Enabled" checked role="switch"></label></legend><div class="information-inputs"><div><label for="info2Label">العنوان <span>اختياري</span></label><input id="info2Label" name="info2Label" maxlength="25" placeholder="مثلًا: التاريخ"></div><div><label for="info2Value">المعلومة</label><input id="info2Value" name="info2Value" maxlength="80" placeholder="اكتب التاريخ أو الوقت" aria-describedby="info2Value-error"></div></div><p class="field-error" id="info2Value-error"></p></fieldset>
+            <fieldset class="information-row"><legend><label class="information-toggle" for="info3-enabled"><span>٣</span> المعلومة الثالثة <input type="checkbox" id="info3-enabled" name="info3Enabled" checked role="switch"></label></legend><div class="information-inputs"><div><label for="info3Label">العنوان <span>اختياري</span></label><input id="info3Label" name="info3Label" maxlength="25" placeholder="مثلًا: التسجيل"></div><div><label for="info3Value">المعلومة</label><input id="info3Value" name="info3Value" maxlength="80" placeholder="اكتب المعلومة الثالثة" aria-describedby="info3Value-error"></div></div><p class="field-error" id="info3Value-error"></p></fieldset>
           </div>
           </section>
           <section class="photo-settings" id="photo-settings" aria-labelledby="photo-heading" hidden>
             <div class="section-divider"><h3 id="photo-heading">صورة البوست</h3><span id="photo-name" class="optional">الصورة الأصلية</span></div>
             <p id="photo-hint" class="field-hint"></p>
             <div class="photo-actions"><button type="button" id="photo-upload-button" class="small-button">رفع صورة</button><button type="button" id="photo-original-button" class="small-button quiet" hidden>الصورة الأصلية</button></div>
+            <div id="portrait-options" class="portrait-options" hidden>
+              <label for="photo-mode">طريقة عرض الصورة</label><select id="photo-mode" name="photoMode"><option value="circle">داخل الدائرة — للصورة العادية</option><option value="cutout">صورة مفرغة — مثل القالب الأصلي</option></select>
+              <label class="inline-option" for="photo-grayscale"><input type="checkbox" id="photo-grayscale" name="photoGrayscale"><span>أبيض وأسود</span></label>
+              <div class="photo-actions"><button type="button" id="photo-remove-background" class="small-button" disabled>تفريغ صورة الشخص تلقائيًا</button><button type="button" id="photo-undo-background" class="small-button quiet" hidden>إلغاء التفريغ</button></div>
+              <p class="field-hint">التفريغ للشخص فقط، ويتم على جهازك. تحميل الأداة يحتاج الإنترنت، وقد تحتاج الحواف إلى مراجعة.</p>
+            </div>
             <input type="file" id="photo-file" class="visually-hidden" tabindex="-1" accept="image/png,image/jpeg,image/webp" aria-label="رفع صورة البوست">
             <p class="field-error" id="photo-error" role="status"></p>
             <div id="photo-controls" class="photo-controls" hidden>
@@ -71,16 +78,18 @@
       <section class="preview panel" aria-labelledby="preview-heading">
         <div class="panel-heading"><div><span class="step-number">02</span><h2 id="preview-heading">المعاينة</h2></div><span id="render-status" class="render-status" aria-live="polite">جارٍ تجهيز القالب…</span></div>
         <div class="preview-stage"><div class="poster-wrap"><canvas id="poster" width="1080" height="1300" lang="ar" role="img" aria-label="معاينة بوست صحوة">يحتاج عرض المعاينة إلى متصفح يدعم Canvas.</canvas><span id="trial-badge" class="trial-badge" hidden>معاينة بخط مؤقت</span></div></div>
-        <div class="preview-meta"><span><span class="dimension-icon" aria-hidden="true">⌗</span><bdi>1080 × 1300</bdi> بكسل</span><span>الخلفية والشعار من القالب الأصلي</span></div>
-        <div class="download-area"><button type="button" id="download-button" class="download-button" disabled><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>تنزيل التصميم PNG</span></button><p id="export-note" aria-live="polite">جارٍ تحميل عناصر القالب والخطوط…</p></div>
+        <div class="preview-meta"><span><span class="dimension-icon" aria-hidden="true">⌗</span><bdi id="export-size">3240 × 3900</bdi> بكسل</span><span>الخلفية والشعار من القالب الأصلي</span></div>
+        <div class="download-area"><div class="quality-choice"><label for="quality-select">جودة التنزيل</label><select id="quality-select"><option value="3" selected>القصوى — 3240 × 3900</option><option value="2">عالية — 2160 × 2600</option><option value="1">المقاس الأصلي — 1080 × 1300</option></select></div><button type="button" id="download-button" class="download-button" disabled><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>تنزيل التصميم PNG</span></button><p id="export-note" aria-live="polite">جارٍ تحميل عناصر القالب والخطوط…</p><p class="sharing-note">لإرسال الملف عبر واتساب بجودته، اختر إرساله كمستند. الصور الصغيرة لا تكتسب تفاصيل جديدة عند تكبيرها.</p></div>
         <div id="general-error" class="general-error" role="alert" hidden></div>
       </section>
     </div>
     <footer class="page-footer"><span>صحوة <span class="footer-star">✦</span> مساحة للعمل والأثر</span><span>٣ قوالب، وهوية واحدة.</span></footer>
   </main>
   <div id="toast" class="toast" role="status" hidden></div>
-  <script src="template-assets.js"></script>
-  <script src="engine.js"></script>
-  <script src="app.js"></script>
+  <script src="template-assets.js?v=1.1.0"></script>
+  <script src="arabic-joining.js?v=1.1.0"></script>
+  <script src="engine.js?v=1.1.0"></script>
+  <script src="portrait.js?v=1.1.0"></script>
+  <script src="app.js?v=1.1.0"></script>
 </body>
 </html>

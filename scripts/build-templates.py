@@ -44,6 +44,12 @@ for template_id in ['psb2', 'psb3']:
         spec = template['layout'][key]
         if spec.get('align') == 'center':
             spec['right'] = (spec['bounds'][0] + spec['bounds'][2]) / 2
+    template['layout']['subtitle']['maxLines'] = 2
+    template['layout']['subtitle']['min'] = template['layout']['subtitle']['max']
+    template['layout']['subtitle']['lineHeight'] = round(template['layout']['subtitle']['max'] * 1.45, 2)
+    if template_id == 'psb2':
+        template['layout']['photoCircle'] = {'x': 4, 'y': 563, 'width': 476, 'height': 486, 'shape': 'ellipse', 'fit': 'cover'}
+        template['fields']['imageHint'] = 'الصورة العادية تبقى داخل الدائرة. للشخص المفرغ اختر «صورة مفرغة» أو استخدم التفريغ التلقائي.'
     template['example'] = {
         **template['defaults'], 'title': 'لقاء\nصحوة',
         'subtitle': 'مساحة نتعلم فيها ونترك أثرًا',

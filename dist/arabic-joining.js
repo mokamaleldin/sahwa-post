@@ -1,0 +1,2 @@
+// Arabic joining types, Unicode 17.0.0 ArabicShaping.txt. See assets/Unicode-LICENSE.txt.
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.SahwaArabicJoining=factory();})(typeof globalThis!=='undefined'?globalThis:this,function(){return {"D":"ؠئبتثجحخسشصضطظعغػؼؽؾؿفقكلمنهىيٮٯٸٹٺٻټٽپٿڀځڂڃڄڅچڇښڛڜڝڞڟڠڡڢڣڤڥڦڧڨکڪګڬڭڮگڰڱڲڳڴڵڶڷڸڹںڻڼڽھڿہۂیێېۑۺۻۼۿݐݑݒݓݔݕݖݗݘݜݝݞݟݠݡݢݣݤݥݦݧݨݩݪݭݮݯݰݲݵݶݷݺݻݼݽݾݿࢆࢉࢊࢋࢌࢍ࢏ࢠࢡࢢࢣࢤࢥࢦࢧࢨࢩࢯࢰࢳࢴࢵࢶࢷࢸࢺࢻࢼࢽࢾࢿࣀࣁࣂࣃࣄࣅࣆࣇࣈ𐻃𐻄𐻆𐻇","R":"آأؤإاةدذرزوٱٲٳٵٶٷڈډڊڋڌڍڎڏڐڑڒړڔڕږڗژڙۀۃۄۅۆۇۈۉۊۋۍۏےۓەۮۯݙݚݛݫݬݱݳݴݸݹࡰࡱࡲࡳࡴࡵࡶࡷࡸࡹࡺࡻࡼࡽࡾࡿࢀࢁࢂࢎࢪࢫࢬࢮࢱࢲࢹ𐻂"};});
