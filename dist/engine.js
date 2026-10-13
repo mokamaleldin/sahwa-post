@@ -197,7 +197,7 @@
   }
   function render(ctx, rawInput, options) {
     const input = cleanInput(rawInput);
-    const { images, titleMode = 'original', template = BASIC_TEMPLATE, infoEnabled = [true, true, true], titleKashida = true, renderScale = 1 } = options;
+    const { images, titleMode = 'fixed', template = BASIC_TEMPLATE, infoEnabled = [true, true, true], titleKashida = true, renderScale = 1 } = options;
     const layout = template.layout;
     const fields = template.fields;
     const typography = template.typography || TYPOGRAPHY;
@@ -221,7 +221,7 @@
     if (!input.title) errors.push({ field: 'title', message: 'اكتب العنوان الرئيسي.' });
     else if (original) ctx.drawImage(images.originalTitle, 0, 0, template.width, template.height);
     else {
-      const family = titleMode === 'custom' ? 'SahwaTitle' : 'SahwaBodyBold';
+      const family = ['fixed', 'custom'].includes(titleMode) ? 'SahwaTitle' : 'SahwaBodyBold';
       const fitted = layoutTitle(ctx, input.title, layout.title, family, titleKashida);
       if (!fitted) errors.push({ field: 'title', message: 'العنوان لا يناسب مساحة القالب. اختصره أو وزّعه على سطرين أقصر.' });
       else {

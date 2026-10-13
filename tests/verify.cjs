@@ -20,6 +20,7 @@ for (const [file, family] of [
   ['IBMPlexSansArabic-Thin.ttf', 'SahwaBodyThin'],
   ['IBMPlexSansArabic-Bold.ttf', 'SahwaBodyBold']
 ]) assert.ok(GlobalFonts.registerFromPath(path.join(root, 'dist/assets', file), family), family);
+assert.ok(GlobalFonts.registerFromPath(path.join(root, 'dist/assets', assets.headingFont.file), 'SahwaTitle'));
 let passed = 0;
 function check(label, action) { action(); passed++; process.stdout.write(`PASS ${label}\n`); }
 function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
@@ -157,6 +158,18 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
     assert.equal(assets.templates[1].fields.informationCount, 0); assert.equal(assets.templates[1].fields.speakerName, false);
     assert.ok(assets.templates.every(template => template.thumbnail.startsWith('data:image/png;base64,')));
   });
+  for (const template of [Engine.BASIC_TEMPLATE, ...assets.templates]) {
+    const templateImages = template.id === Engine.BASIC_TEMPLATE.id ? images : Object.fromEntries(await Promise.all(Object.entries(template.assets).map(async ([key, uri]) => [key, await loadImage(uri)])));
+    const rendered = Engine.render(ctx, { ...template.example, title: 'محمد\nكمال' }, { template, images: templateImages, createCanvas });
+    check(`${template.id}: the bundled heading font exports a new title without upload or trial mode`, () => {
+      assert.equal(rendered.valid, true); assert.equal(rendered.temporaryFont, false);
+      assert.equal(rendered.originalTitle, false); assert.ok(rendered.kashidaCount > 0);
+      assert.equal(rendered.titleLines.join('\n').replace(/ـ/g, ''), 'محمد\nكمال');
+      assert.equal(rendered.errors.some(error => error.field === 'titleFont'), false);
+      const titleBytes = Buffer.from(assets.fonts.title.split(',')[1], 'base64');
+      assert.ok(titleBytes.equals(fs.readFileSync(path.join(root, 'dist/assets', assets.headingFont.file))));
+    });
+  }
   const replacement = createCanvas(600, 800), replacementContext = replacement.getContext('2d');
   const gradient = replacementContext.createLinearGradient(0, 0, 600, 800);
   gradient.addColorStop(0, '#227a58'); gradient.addColorStop(1, '#eec079');

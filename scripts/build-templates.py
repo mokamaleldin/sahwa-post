@@ -31,6 +31,13 @@ names = {
     'psb2': ('قالب المحاضرة', 'صورة الأستاذ و٣ معلومات'),
     'psb3': ('قالب الصورة', 'عنوان وصورة كبيرة'),
 }
+heading_font = json.loads((ASSETS / 'heading-font.json').read_text())
+heading_path = Path(heading_font['file'])
+if heading_path.name != heading_font['file'] or heading_path.suffix.lower() not in ['.ttf', '.otf'] or heading_font['weight'] != 700:
+    raise ValueError('The shared heading font must be a TTF/OTF asset with weight 700.')
+bundle['headingFont'] = heading_font
+if heading_path.name != 'IBMPlexSansArabic-Bold.ttf':
+    bundle['fonts']['title'] = data_uri(ASSETS / heading_path, 'font/otf' if heading_path.suffix.lower() == '.otf' else 'font/ttf')
 aliases = {'originalSpeakerName': 'originalSpeaker', 'marker': 'badge'}
 for template_id in ['psb2', 'psb3']:
     metadata = json.loads((ASSETS / template_id / 'metadata.json').read_text())
@@ -74,5 +81,5 @@ for template_id in ['psb2', 'psb3']:
     bundle['templates'].append(template)
 
 destination = DIST / 'template-assets.js'
-destination.write_text('window.SAHWA_ASSETS = ' + json.dumps(bundle, ensure_ascii=False, separators=(',', ':')) + ';\n')
+destination.write_text('window.SAHWA_ASSETS = ' + json.dumps(bundle, ensure_ascii=False, separators=(',', ':')) + ';\n' + ('window.SAHWA_ASSETS.fonts.title = window.SAHWA_ASSETS.fonts.bold;\n' if 'title' not in bundle['fonts'] else ''))
 print(json.dumps({'templates': 3, 'bundle_bytes': destination.stat().st_size}))
