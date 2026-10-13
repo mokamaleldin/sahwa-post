@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#752026">
+  <meta name="description" content="املأ حقول قالب صحوة، راجع المعاينة، ونزّل بوستًا جاهزًا للنشر.">
+  <title>استوديو صحوة — القالب الأول</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body id="top">
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="استوديو صحوة، أعلى الصفحة"><span class="brand-mark" aria-hidden="true">ص</span><span>استوديو <strong>صحوة</strong></span></a>
+    <div class="header-end"><span class="version-tag">القالب الأول</span><a href="offline.html" download="sahwa-studio.html" class="offline-link">نسخة بدون إنترنت <span aria-hidden="true">↙</span></a></div>
+  </header>
+  <main>
+    <section class="page-intro">
+      <div><p class="eyebrow"><span></span> من الفكرة إلى بوست جاهز</p><h1>جهّز بوست صحوة.</h1><p class="lead">اكتب المحتوى، راجع المعاينة، ونزّل التصميم بهوية صحوة.</p></div>
+      <div class="template-summary"><span class="template-symbol" aria-hidden="true">✦</span><div><strong>القالب الأساسي</strong><small>عنوان + جملة ثانوية + ٣ معلومات</small></div><span class="text-tag">بدون صورة</span></div>
+    </section>
+    <div class="workspace">
+      <section class="editor panel" aria-labelledby="editor-heading">
+        <div class="panel-heading"><div><span class="step-number">01</span><h2 id="editor-heading">محتوى البوست</h2></div><button id="example-button" type="button" class="text-button">املأ بمثال</button></div>
+        <form id="post-form" novalidate>
+          <div class="field">
+            <div class="label-row"><label for="title">العنوان الرئيسي <span class="required">*</span></label><span id="title-count" class="counter"></span></div>
+            <textarea id="title" name="title" rows="2" maxlength="100" placeholder="اكتب عنوان البوست" aria-describedby="title-hint title-error" required></textarea>
+            <p class="field-hint" id="title-hint">سطر أو سطران. يمكنك الضغط على Enter لاختيار موضع السطر الثاني.</p><p class="field-error" id="title-error"></p>
+          </div>
+          <div class="field">
+            <div class="label-row"><label for="subtitle">الجملة الثانوية</label><span class="optional">اختياري</span></div>
+            <textarea id="subtitle" name="subtitle" rows="2" maxlength="180" placeholder="جملة قصيرة تشرح العنوان" aria-describedby="subtitle-error"></textarea><p class="field-error" id="subtitle-error"></p>
+          </div>
+          <div class="section-divider"><h3>نقاط المعلومات</h3><p>اترك الخانة فارغة لإخفائها من التصميم.</p></div>
+          <div class="information-fields">
+            <fieldset class="information-row"><legend><span>١</span> المعلومة الأولى</legend><div class="information-inputs"><div><label for="info1Label">العنوان <span>اختياري</span></label><input id="info1Label" name="info1Label" maxlength="25" placeholder="مثلًا: المكان"></div><div><label for="info1Value">المعلومة</label><input id="info1Value" name="info1Value" maxlength="80" placeholder="مثلًا: مركز بلاد الشام" aria-describedby="info1Value-error"></div></div><p class="field-error" id="info1Value-error"></p></fieldset>
+            <fieldset class="information-row"><legend><span>٢</span> المعلومة الثانية</legend><div class="information-inputs"><div><label for="info2Label">العنوان <span>اختياري</span></label><input id="info2Label" name="info2Label" maxlength="25" placeholder="مثلًا: التاريخ"></div><div><label for="info2Value">المعلومة</label><input id="info2Value" name="info2Value" maxlength="80" placeholder="اكتب التاريخ أو الوقت" aria-describedby="info2Value-error"></div></div><p class="field-error" id="info2Value-error"></p></fieldset>
+            <fieldset class="information-row"><legend><span>٣</span> المعلومة الثالثة</legend><div class="information-inputs"><div><label for="info3Label">العنوان <span>اختياري</span></label><input id="info3Label" name="info3Label" maxlength="25" placeholder="مثلًا: التسجيل"></div><div><label for="info3Value">المعلومة</label><input id="info3Value" name="info3Value" maxlength="80" placeholder="اكتب المعلومة الثالثة" aria-describedby="info3Value-error"></div></div><p class="field-error" id="info3Value-error"></p></fieldset>
+          </div>
+          <details class="font-settings" id="font-settings" open>
+            <summary><span class="font-indicator" id="font-indicator"></span><span id="font-summary">خط العنوان الأصلي</span><span class="details-arrow" aria-hidden="true">⌄</span></summary>
+            <div class="font-content"><p id="font-description">لتغيير العنوان بنفس الخط، ارفع <bdi>Asal Arabic Bold</bdi>. يمكنك تجربة الأداة الآن بخط مؤقت.</p><div class="font-actions"><button type="button" id="font-upload-button" class="small-button">رفع الخط الأصلي</button><button type="button" id="trial-button" class="small-button quiet">تجربة بخط مؤقت</button></div><input type="file" id="font-file" class="visually-hidden" tabindex="-1" accept=".ttf,.otf" aria-label="رفع خط Asal Arabic Bold"><p id="font-message" class="font-message" role="status"></p><button type="button" id="remove-font-button" class="text-button remove-font" hidden>إزالة الخط من هذا الجهاز</button></div>
+          </details>
+          <div class="editor-footer"><span id="save-status"><span class="save-dot"></span> تُحفظ الحقول على هذا الجهاز</span><button type="button" id="clear-button" class="text-button">تفريغ الحقول</button></div>
+        </form>
+      </section>
+      <section class="preview panel" aria-labelledby="preview-heading">
+        <div class="panel-heading"><div><span class="step-number">02</span><h2 id="preview-heading">المعاينة</h2></div><span id="render-status" class="render-status" aria-live="polite">جارٍ تجهيز القالب…</span></div>
+        <div class="preview-stage"><div class="poster-wrap"><canvas id="poster" width="1080" height="1300" lang="ar" role="img" aria-label="معاينة بوست صحوة">يحتاج عرض المعاينة إلى متصفح يدعم Canvas.</canvas><span id="trial-badge" class="trial-badge" hidden>معاينة بخط مؤقت</span></div></div>
+        <div class="preview-meta"><span><span class="dimension-icon" aria-hidden="true">⌗</span><bdi>1080 × 1300</bdi> بكسل</span><span>الخلفية والشعار من القالب الأصلي</span></div>
+        <div class="download-area"><button type="button" id="download-button" class="download-button" disabled><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>تنزيل التصميم PNG</span></button><p id="export-note" aria-live="polite">جارٍ تحميل عناصر القالب والخطوط…</p></div>
+        <div id="general-error" class="general-error" role="alert" hidden></div>
+      </section>
+    </div>
+    <footer class="page-footer"><span>صحوة <span class="footer-star">✦</span> مساحة للعمل والأثر</span><span>قالب واحد، وخطوة أولى.</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="template-assets.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

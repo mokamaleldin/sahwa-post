@@ -1,0 +1,13 @@
+{
+  "name": "sahwa-post-maker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simple Arabic post generator using the Sahwa template",
+  "scripts": {
+    "test": "node tests/verify.cjs",
+    "build": "python3 scripts/build-offline.py"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.100"
+  }
+}
