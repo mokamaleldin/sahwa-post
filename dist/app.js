@@ -2,6 +2,10 @@
   'use strict';
   const Engine = window.SahwaEngine;
   const ASSETS = window.SAHWA_ASSETS;
+  const templates = [{
+    ...Engine.BASIC_TEMPLATE, thumbnail: ASSETS.thumbnail,
+    assets: { background: ASSETS.background, originalTitle: ASSETS.originalTitle, badge: ASSETS.badge }
+  }, ...(ASSETS.templates || [])];
   const form = document.getElementById('post-form');
   const canvas = document.getElementById('poster');
   const ctx = canvas.getContext('2d');
@@ -11,12 +15,25 @@
   const generalError = document.getElementById('general-error');
   const trialButton = document.getElementById('trial-button');
   const fontMessage = document.getElementById('font-message');
-  const storageKey = 'sahwa-simple-v1-input';
-  let images = null, result = null, customFace = null, mode = 'original';
+  const photoError = document.getElementById('photo-error');
+  const storageKey = 'sahwa-studio-v2';
+  const imageCache = new Map(), photos = new Map();
+  const state = { selected: templates[0].id, drafts: {} };
+  let template = templates[0], images = null, result = null, customFace = null, mode = 'trial';
   let raf = null, toastTimer = null, saveTimer = null, databasePromise = null;
+  let selectionVersion = 0, photoVersion = 0, ready = false, exporting = false;
 
   function readInput() { return Object.fromEntries(Engine.KEYS.map(key => [key, form.elements.namedItem(key).value])); }
   function putInput(input) { Engine.KEYS.forEach(key => { form.elements.namedItem(key).value = String(input[key] ?? ''); }); }
+  function transform() {
+    return { zoom: Number(form.elements.photoZoom.value), x: Number(form.elements.photoX.value), y: Number(form.elements.photoY.value) };
+  }
+  function putTransform(value = {}) {
+    form.elements.photoZoom.value = String(value.zoom || 1);
+    form.elements.photoX.value = String(value.x || 0);
+    form.elements.photoY.value = String(value.y || 0);
+    document.getElementById('photo-zoom-value').textContent = `${Math.round(Number(form.elements.photoZoom.value) * 100)}%`;
+  }
   function toast(message) {
     const el = document.getElementById('toast'); el.textContent = message; el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4200);
@@ -24,27 +41,38 @@
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const image = new Image(); image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('تعذّر تحميل أحد عناصر القالب. أعد فتح الصفحة.'));
+      image.onerror = () => reject(new Error('تعذّر تحميل الصورة أو أحد عناصر القالب. جرّب مجددًا.'));
       image.src = src;
     });
+  }
+  async function loadPhoto(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = await loadImage(url);
+      if (!image.width || !image.height) throw new Error('هذه الصورة غير صالحة.');
+      return { image, file, name: file.name || 'الصورة المرفوعة' };
+    } finally { URL.revokeObjectURL(url); }
   }
   function db() {
     if (databasePromise) return databasePromise;
     databasePromise = new Promise((resolve, reject) => {
-      if (!window.indexedDB) { reject(new Error('حفظ الخط غير متاح في هذا المتصفح.')); return; }
-      const request = indexedDB.open('sahwa-studio-v1', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('fonts');
+      if (!window.indexedDB) { reject(new Error('الحفظ غير متاح في هذا المتصفح.')); return; }
+      const request = indexedDB.open('sahwa-studio-v1', 2);
+      request.onupgradeneeded = () => {
+        for (const name of ['fonts', 'photos']) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name);
+      };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('أغلق النسخ الأخرى من الأداة ثم جرّب الحفظ مجددًا.'));
     });
     return databasePromise;
   }
-  async function storedFont(action, value) {
+  async function stored(storeName, key, action, value) {
     const database = await db();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction('fonts', action === 'get' ? 'readonly' : 'readwrite');
-      const store = transaction.objectStore('fonts');
-      const request = action === 'get' ? store.get('title') : action === 'put' ? store.put(value, 'title') : store.delete('title');
+      const transaction = database.transaction(storeName, action === 'get' ? 'readonly' : 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = action === 'get' ? store.get(key) : action === 'put' ? store.put(value, key) : store.delete(key);
       let output;
       request.onsuccess = () => { output = request.result; };
       transaction.oncomplete = () => resolve(output);
@@ -52,61 +80,81 @@
       transaction.onabort = () => reject(transaction.error);
     });
   }
+  function captureDraft() {
+    state.drafts[template.id] = { input: readInput(), photoTransform: transform() };
+  }
+  function persistDrafts() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      document.getElementById('save-status').innerHTML = '<span class="save-dot"></span> حُفظت مسودة هذا القالب على الجهاز';
+    } catch {
+      document.getElementById('save-status').textContent = 'المسودة محفوظة أثناء فتح الصفحة فقط';
+    }
+  }
+  function saveInput() {
+    captureDraft(); clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistDrafts, 450);
+  }
   function showFontState() {
-    const indicator = document.getElementById('font-indicator');
-    const summary = document.getElementById('font-summary');
-    const description = document.getElementById('font-description');
-    indicator.classList.toggle('ready', mode === 'custom');
+    document.getElementById('font-indicator').classList.toggle('ready', mode === 'custom');
     trialButton.classList.toggle('active', mode === 'trial');
     trialButton.setAttribute('aria-pressed', String(mode === 'trial'));
     document.getElementById('remove-font-button').hidden = !customFace;
+    const summary = document.getElementById('font-summary');
+    const description = document.getElementById('font-description');
     if (mode === 'custom') {
       summary.textContent = 'خط العنوان الأصلي جاهز';
-      description.textContent = 'Asal Arabic Bold مرفوع. العنوان الجديد سيُكتب بهذا الخط، والمعلومات بخط IBM Plex Sans Arabic.';
+      description.textContent = 'Asal Arabic Bold جاهز للقوالب الثلاثة. الجملة الثانوية والمعلومات بخطوط IBM Plex Sans Arabic الأصلية.';
       trialButton.textContent = 'تجربة الخط المؤقت';
     } else if (mode === 'trial') {
-      summary.textContent = 'وضع التجربة — خط عنوان مؤقت';
-      description.textContent = 'العنوان الجديد يُكتب مؤقتًا بخط IBM Plex Sans Arabic Bold. ارفع Asal Arabic Bold لاستخدام خط القالب الأصلي.';
-      trialButton.textContent = customFace ? 'العودة للخط الأصلي' : 'إلغاء الخط المؤقت';
+      summary.textContent = 'خط العناوين الجديدة مؤقت';
+      description.textContent = 'يمكنك العمل والتنزيل الآن بخط IBM Plex Sans Arabic Bold. العنوان الافتراضي محفوظ من القالب، وستستخدم العناوين الجديدة Asal Arabic Bold عند رفعه.';
+      trialButton.textContent = customFace ? 'العودة للخط الأصلي' : 'انتظار الخط الأصلي';
     } else {
-      summary.textContent = 'خط العنوان الأصلي';
-      description.textContent = 'العنوان الأصلي محفوظ كما هو. لتغييره بنفس الخط، ارفع Asal Arabic Bold، أو جرّب الأداة بخط مؤقت.';
-      trialButton.textContent = 'تجربة بخط مؤقت';
+      summary.textContent = 'بانتظار خط العنوان الأصلي';
+      description.textContent = 'العنوان الافتراضي محفوظ. ارفع Asal Arabic Bold لكتابة عنوان جديد بنفس الخط، أو فعّل الخط المؤقت الآن.';
+      trialButton.textContent = 'استخدام خط مؤقت';
     }
+  }
+  function showPhotoState() {
+    const photo = photos.get(template.id);
+    document.getElementById('photo-name').textContent = photo?.name || 'الصورة الأصلية';
+    document.getElementById('photo-controls').hidden = !photo;
+    document.getElementById('photo-original-button').hidden = !photo;
   }
   function showErrors(errors) {
     for (const key of Engine.KEYS) {
-      const input = form.elements.namedItem(key);
-      input.removeAttribute('aria-invalid');
-      const el = document.getElementById(`${key}-error`);
-      if (el) el.textContent = '';
+      form.elements.namedItem(key).removeAttribute('aria-invalid');
+      const el = document.getElementById(`${key}-error`); if (el) el.textContent = '';
     }
     for (const error of errors) {
       const input = form.elements.namedItem(error.field);
       if (input) input.setAttribute('aria-invalid', 'true');
-      const el = document.getElementById(`${error.field}-error`);
-      if (el) el.textContent = error.message;
+      const el = document.getElementById(`${error.field}-error`); if (el) el.textContent = error.message;
     }
   }
   function draw() {
     raf = null;
-    if (!images) return;
+    if (!ready || !images) return;
     try {
       const input = readInput();
-      result = Engine.render(ctx, input, { images, titleMode: mode });
-      canvas.setAttribute('aria-label', `معاينة بوست صحوة. العنوان: ${input.title}. ${input.subtitle}. ${[1, 2, 3].map(i => `${input[`info${i}Label`]} ${input[`info${i}Value`]}`).join('. ')}`);
+      result = Engine.render(ctx, input, { images, template, titleMode: mode, photoImage: photos.get(template.id)?.image, photoTransform: transform() });
+      const spokenFields = [input.title, input.subtitle];
+      if (template.fields.speakerName) spokenFields.push(input.speakerName);
+      for (let i = 1; i <= template.fields.informationCount; i++) spokenFields.push(`${template.fields.labels ? input[`info${i}Label`] : ''} ${input[`info${i}Value`]}`);
+      canvas.setAttribute('aria-label', `معاينة ${template.name}. ${spokenFields.join('. ')}`);
       document.getElementById('title-count').textContent = `${Array.from(input.title).length} / 100`;
+      document.getElementById('photo-zoom-value').textContent = `${Math.round(transform().zoom * 100)}%`;
       showErrors(result.errors);
-      document.getElementById('trial-badge').hidden = result.originalTitle || mode === 'custom' || !input.title.trim();
-      downloadButton.disabled = !result.valid;
+      document.getElementById('trial-badge').hidden = !input.title.trim() || result.originalTitle || mode === 'custom';
+      downloadButton.disabled = exporting || !result.valid;
       renderStatus.textContent = result.valid ? 'جاهز للتنزيل' : result.errors.every(error => error.field === 'titleFont') ? 'بانتظار خط العنوان' : 'راجع الحقول';
       renderStatus.classList.toggle('ready', result.valid);
       if (!result.valid) exportNote.textContent = result.errors[0].message;
-      else if (result.temporaryFont) exportNote.textContent = 'النسخة التجريبية تستخدم خط عنوان مؤقتًا؛ الخلفية والشعار محفوظان.';
-      else if (result.originalTitle && mode !== 'custom') exportNote.textContent = 'العنوان الأصلي محفوظ. يمكنك تعديل الجملة الثانوية والمعلومات وتنزيل التصميم.';
+      else if (result.temporaryFont) exportNote.textContent = 'العنوان الجديد بخط مؤقت لحد رفع الخط الأصلي. صورة PNG بالحجم الأصلي.';
       else exportNote.textContent = 'صورة PNG بالحجم الأصلي، بدون إضافات على التصميم.';
       generalError.hidden = true;
-    } catch (error) {
+    } catch {
       downloadButton.disabled = true; result = null;
       generalError.hidden = false; generalError.textContent = 'تعذّر تحديث المعاينة. أعد تحميل الصفحة وجرب مرة أخرى.';
       renderStatus.textContent = 'المعاينة غير جاهزة';
@@ -116,53 +164,116 @@
     if (raf !== null) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(draw);
   }
-  function saveInput() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(readInput()));
-        document.getElementById('save-status').innerHTML = '<span class="save-dot"></span> حُفظت الحقول على هذا الجهاز';
-      } catch {
-        document.getElementById('save-status').textContent = 'الحقول محفوظة أثناء فتح الصفحة فقط';
+  function updateFields() {
+    document.getElementById('subtitle-field').hidden = !template.fields.subtitle;
+    document.getElementById('speaker-field').hidden = !template.fields.speakerName;
+    document.getElementById('information-section').hidden = !template.fields.informationCount;
+    document.getElementById('photo-settings').hidden = !template.fields.image;
+    document.getElementById('photo-hint').textContent = template.fields.imageHint || '';
+    document.getElementById('template-name').textContent = template.name;
+    document.getElementById('template-description').textContent = template.summary || template.description;
+    document.getElementById('template-image-tag').textContent = template.fields.image ? 'مع صورة' : 'بدون صورة';
+    document.querySelectorAll('.information-row').forEach((row, index) => {
+      row.hidden = index >= template.fields.informationCount;
+      const columns = row.querySelector('.information-inputs');
+      columns.classList.toggle('no-labels', !template.fields.labels);
+      columns.firstElementChild.hidden = !template.fields.labels;
+    });
+    document.querySelectorAll('.template-card').forEach(button => {
+      const selected = button.dataset.templateId === template.id;
+      button.setAttribute('aria-checked', String(selected)); button.tabIndex = selected ? 0 : -1;
+    });
+    showPhotoState(); showErrors([]); photoError.textContent = '';
+  }
+  async function selectTemplate(id, capture = true) {
+    const next = templates.find(item => item.id === id);
+    if (!next || (capture && template.id === id)) return;
+    if (capture) captureDraft();
+    template = next; state.selected = id;
+    const token = ++selectionVersion;
+    ++photoVersion;
+    const draft = state.drafts[id]; putInput(draft?.input || next.defaults); putTransform(draft?.photoTransform);
+    updateFields(); images = null; result = null; downloadButton.disabled = true;
+    document.getElementById('photo-upload-button').disabled = true;
+    renderStatus.textContent = 'جارٍ تجهيز القالب…'; renderStatus.classList.remove('ready');
+    persistDrafts();
+    try {
+      if (!imageCache.has(id)) imageCache.set(id, Promise.all(Object.entries(next.assets).map(async ([key, src]) => [key, await loadImage(src)])).then(entries => Object.fromEntries(entries)));
+      const loadedImages = await imageCache.get(id);
+      if (!photos.has(id) && next.fields.image) {
+        let photo = null;
+        try { const saved = await stored('photos', id, 'get'); if (saved?.file) photo = await loadPhoto(saved.file); } catch { /* Device storage is optional. */ }
+        if (!photos.has(id)) photos.set(id, photo);
       }
-    }, 450);
+      if (token !== selectionVersion) return;
+      images = loadedImages; canvas.width = next.width; canvas.height = next.height;
+      document.getElementById('photo-upload-button').disabled = false;
+      showPhotoState(); draw();
+    } catch (error) {
+      imageCache.delete(id);
+      if (token !== selectionVersion) return;
+      generalError.hidden = false; generalError.textContent = error.message;
+      renderStatus.textContent = 'تعذّر تحميل القالب'; exportNote.textContent = 'أعد تحميل الصفحة لتجهيز القالب.';
+    }
+  }
+  function buildPicker() {
+    const container = document.getElementById('template-options');
+    for (const item of templates) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'template-card';
+      button.dataset.templateId = item.id; button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', 'false');
+      const thumbnail = document.createElement('img'); thumbnail.src = item.thumbnail || ASSETS.thumbnail; thumbnail.alt = ''; thumbnail.width = 62; thumbnail.height = 75;
+      const text = document.createElement('span'); const name = document.createElement('strong'); name.textContent = item.name;
+      const description = document.createElement('small'); description.textContent = item.summary || item.description;
+      const check = document.createElement('span'); check.className = 'template-check'; check.textContent = '✓'; check.setAttribute('aria-hidden', 'true');
+      text.append(name, description); button.append(thumbnail, text, check);
+      button.addEventListener('click', () => { selectTemplate(item.id); });
+      button.addEventListener('keydown', event => {
+        const buttons = Array.from(container.children), index = buttons.indexOf(button);
+        let target;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') target = buttons[(index + 1) % buttons.length];
+        if (event.key === 'ArrowRight' || event.key === 'ArrowUp') target = buttons[(index + buttons.length - 1) % buttons.length];
+        if (event.key === 'Home') target = buttons[0]; if (event.key === 'End') target = buttons.at(-1);
+        if (target) { event.preventDefault(); target.focus(); selectTemplate(target.dataset.templateId); }
+      });
+      container.append(button);
+    }
   }
   async function applyTitleFont(buffer, persist, filename) {
     const names = Engine.parseFontNames(buffer);
     if (!Engine.isOriginalFont(names)) throw new Error('هذا ليس خط Asal Arabic Bold المستخدم في القالب. ارفع ملفه الأصلي بصيغة TTF أو OTF.');
-    const face = new FontFace('SahwaTitle', buffer, { weight: '700', style: 'normal' });
-    await face.load();
-    document.fonts.add(face);
-    if (customFace) document.fonts.delete(customFace);
-    customFace = face; mode = 'custom';
-    showFontState(); draw();
+    const face = new FontFace('SahwaTitle', buffer, { weight: '700', style: 'normal' }); await face.load();
+    document.fonts.add(face); if (customFace) document.fonts.delete(customFace);
+    customFace = face; mode = 'custom'; showFontState(); draw();
     if (persist) {
-      try {
-        await storedFont('put', { buffer, filename });
-        fontMessage.textContent = 'الخط الأصلي جاهز ومحفوظ على هذا الجهاز.';
-      } catch { fontMessage.textContent = 'الخط جاهز لهذه الجلسة. قد تحتاج إلى رفعه مجددًا عند إعادة فتح الصفحة.'; }
+      try { await stored('fonts', 'title', 'put', { buffer, filename }); fontMessage.textContent = 'الخط الأصلي جاهز ومحفوظ على هذا الجهاز.'; }
+      catch { fontMessage.textContent = 'الخط جاهز لهذه الجلسة. قد تحتاج إلى رفعه مجددًا عند إعادة فتح الصفحة.'; }
     }
   }
 
-  putInput(Engine.DEFAULTS);
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
-    if (saved && typeof saved === 'object' && Engine.KEYS.every(key => typeof saved[key] === 'string')) putInput(saved);
+    if (saved?.drafts && typeof saved.drafts === 'object') {
+      for (const item of templates) {
+        const draft = saved.drafts[item.id];
+        if (draft?.input && typeof draft.input === 'object') state.drafts[item.id] = { input: Engine.cleanInput(draft.input), photoTransform: draft.photoTransform || {} };
+      }
+      if (templates.some(item => item.id === saved.selected)) state.selected = saved.selected;
+    } else {
+      const previous = JSON.parse(localStorage.getItem('sahwa-simple-v1-input'));
+      if (previous && typeof previous === 'object') state.drafts[templates[0].id] = { input: Engine.cleanInput(previous) };
+    }
   } catch { /* Local storage is optional, including when opened as a local file. */ }
+  putInput(template.defaults); buildPicker(); updateFields(); showFontState();
   form.addEventListener('submit', event => event.preventDefault());
   form.addEventListener('input', event => {
-    if (Engine.KEYS.includes(event.target.name)) { scheduleDraw(); saveInput(); }
+    if (Engine.KEYS.includes(event.target.name) || ['photoZoom', 'photoX', 'photoY'].includes(event.target.name)) { scheduleDraw(); saveInput(); }
   });
+  window.addEventListener('pagehide', () => { captureDraft(); persistDrafts(); });
   document.getElementById('example-button').addEventListener('click', () => {
-    putInput(Engine.EXAMPLE); draw(); saveInput();
-    if (mode === 'original') {
-      document.getElementById('font-settings').open = true;
-      toast('تم ملء المثال. ارفع خط العنوان، أو اضغط «تجربة بخط مؤقت» لتنزيله الآن.');
-    } else toast('تم ملء بيانات مثال؛ يمكنك تعديل أي حقل.');
+    putInput(template.example || { ...template.defaults, title: 'لقاء\nصحوة', subtitle: 'مساحة نتعلم فيها ونترك أثرًا' }); draw(); saveInput();
+    toast('تم ملء بيانات مثال؛ يمكنك تعديل أي حقل.');
   });
-  document.getElementById('clear-button').addEventListener('click', () => {
-    putInput({}); draw(); saveInput(); form.elements.namedItem('title').focus();
-  });
+  document.getElementById('clear-button').addEventListener('click', () => { putInput({}); draw(); saveInput(); form.elements.namedItem('title').focus(); });
   trialButton.addEventListener('click', () => {
     mode = mode === 'trial' ? (customFace ? 'custom' : 'original') : 'trial';
     fontMessage.textContent = ''; showFontState(); draw();
@@ -178,48 +289,57 @@
     event.target.value = '';
   });
   document.getElementById('remove-font-button').addEventListener('click', async () => {
-    if (customFace) document.fonts.delete(customFace);
-    customFace = null; mode = 'original';
-    try { await storedFont('delete'); } catch { /* Storage may be unavailable. */ }
-    fontMessage.textContent = 'أُزيل الخط من هذا الجهاز.'; showFontState(); draw();
+    if (customFace) document.fonts.delete(customFace); customFace = null; mode = 'trial';
+    try { await stored('fonts', 'title', 'delete'); } catch { /* Storage may be unavailable. */ }
+    fontMessage.textContent = 'أُزيل الخط. العناوين الجديدة تستخدم الخط المؤقت الآن.'; showFontState(); draw();
   });
+  document.getElementById('photo-upload-button').addEventListener('click', () => document.getElementById('photo-file').click());
+  document.getElementById('photo-file').addEventListener('change', async event => {
+    const file = event.target.files?.[0]; if (!file) return;
+    const id = template.id, token = ++photoVersion;
+    photoError.textContent = 'جارٍ تجهيز الصورة…';
+    try {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw new Error('اختر صورة PNG أو JPG أو WebP.');
+      if (file.size > 20 * 1024 * 1024) throw new Error('حجم الصورة يتجاوز 20 ميجابايت. استخدم نسخة أصغر.');
+      const photo = await loadPhoto(file);
+      if (token !== photoVersion || template.id !== id) return;
+      photos.set(id, photo); putTransform(); showPhotoState(); draw(); saveInput();
+      photoError.textContent = '';
+      try { await stored('photos', id, 'put', { file }); }
+      catch { if (template.id === id) photoError.textContent = 'الصورة جاهزة للجلسة الحالية؛ تعذّر حفظها على هذا الجهاز.'; }
+    } catch (error) { if (token === photoVersion && template.id === id) photoError.textContent = error.message || 'تعذّر قراءة الصورة.'; }
+    finally { event.target.value = ''; }
+  });
+  document.getElementById('photo-original-button').addEventListener('click', async () => {
+    const id = template.id; ++photoVersion; photos.set(id, null); putTransform(); showPhotoState(); photoError.textContent = ''; draw(); saveInput();
+    try { await stored('photos', id, 'delete'); } catch { if (template.id === id) photoError.textContent = 'تمت استعادة الأصل؛ تعذّر تحديث حفظ الصورة على الجهاز.'; }
+  });
+  document.getElementById('photo-reset-button').addEventListener('click', () => { putTransform(); draw(); saveInput(); });
   downloadButton.addEventListener('click', async () => {
-    draw(); if (!result?.valid) return;
-    downloadButton.disabled = true;
-    const filenamePrefix = result.temporaryFont ? 'sahwa-demo' : 'sahwa-post';
+    draw(); if (!result?.valid || exporting) return;
+    const exported = result, id = template.id;
+    exporting = true; downloadButton.disabled = true;
     const text = downloadButton.querySelector('span'); text.textContent = 'جارٍ تجهيز الصورة…';
     try {
       const blob = await new Promise((resolve, reject) => canvas.toBlob(output => output ? resolve(output) : reject(new Error('تعذّر إنشاء الصورة.')), 'image/png'));
-      const url = URL.createObjectURL(blob); const anchor = document.createElement('a');
-      anchor.href = url; anchor.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.png`;
-      document.body.append(anchor); anchor.click(); anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-      toast(result.temporaryFont ? 'تم تنزيل الصورة التجريبية بخط العنوان المؤقت.' : 'تم تنزيل التصميم بالحجم الأصلي.');
+      const url = URL.createObjectURL(blob), anchor = document.createElement('a');
+      anchor.href = url; anchor.download = `sahwa-${id}${exported.temporaryFont ? '-demo' : ''}-${new Date().toISOString().slice(0, 10)}.png`;
+      document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+      toast(exported.temporaryFont ? 'تم تنزيل التصميم بخط العنوان المؤقت.' : 'تم تنزيل التصميم بالحجم الأصلي.');
     } catch (error) { toast(error.message || 'تعذّر تنزيل الصورة. أعد المحاولة.'); }
-    finally { text.textContent = 'تنزيل التصميم PNG'; downloadButton.disabled = !result?.valid; }
+    finally { exporting = false; text.textContent = 'تنزيل التصميم PNG'; draw(); }
   });
 
   try {
     if (!ctx || !window.FontFace) throw new Error('هذا المتصفح لا يدعم توليد التصميم. استخدم إصدارًا حديثًا من Chrome أو Firefox أو Safari.');
-    const fontSpecifications = [
-      ['SahwaBodyExtraLight', ASSETS.fonts.extraLight, '200'],
-      ['SahwaBodyLight', ASSETS.fonts.light, '300'],
-      ['SahwaBodyBold', ASSETS.fonts.bold, '700']
-    ];
-    const faces = await Promise.all(fontSpecifications.map(async ([family, source, weight]) => {
-      const face = new FontFace(family, `url(${source})`, { weight, style: 'normal' }); await face.load(); return face;
-    }));
+    const faces = await Promise.all([
+      ['SahwaBodyExtraLight', ASSETS.fonts.extraLight, '200'], ['SahwaBodyLight', ASSETS.fonts.light, '300'], ['SahwaBodyBold', ASSETS.fonts.bold, '700']
+    ].map(async ([family, source, weight]) => { const face = new FontFace(family, `url(${source})`, { weight, style: 'normal' }); await face.load(); return face; }));
     faces.forEach(face => document.fonts.add(face));
-    const imageEntries = await Promise.all(['background', 'originalTitle', 'badge'].map(async key => [key, await loadImage(ASSETS[key])]));
-    images = Object.fromEntries(imageEntries);
-    try {
-      const saved = await storedFont('get');
-      if (saved?.buffer) await applyTitleFont(saved.buffer, false, saved.filename);
-    } catch { /* A saved title font is optional. */ }
-    showFontState(); draw();
+    try { const saved = await stored('fonts', 'title', 'get'); if (saved?.buffer) await applyTitleFont(saved.buffer, false, saved.filename); } catch { /* The title font is optional. */ }
+    ready = true; showFontState(); await selectTemplate(state.selected, false);
   } catch (error) {
     generalError.hidden = false; generalError.textContent = error.message || 'تعذّر تجهيز القالب. أعد تحميل الصفحة.';
-    renderStatus.textContent = 'تعذّر تحميل القالب';
-    exportNote.textContent = 'التنزيل متوقف حتى يكتمل تحميل القالب.'; downloadButton.disabled = true;
+    renderStatus.textContent = 'تعذّر تحميل القالب'; exportNote.textContent = 'التنزيل متوقف حتى يكتمل تحميل القالب.'; downloadButton.disabled = true;
   }
 })();

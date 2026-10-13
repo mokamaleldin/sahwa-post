@@ -1,0 +1,248 @@
+{
+  "id": "psb3",
+  "name": "عنوان فوق صورة",
+  "description": "عنوان وجملة ثانوية في المنتصف مع صورة كبيرة أسفل التدرج الأصلي.",
+  "width": 1080,
+  "height": 1300,
+  "color": "#752026",
+  "source": {
+    "filename": "صحوة تيمبليت ٣(1).psb",
+    "sha256": "12fc47ad4fc489f47d9d5aec7f6e50c257edb46922bd5037ed6ea27a0d2bf963",
+    "format": "Photoshop Large Document",
+    "layerCount": 12
+  },
+  "defaults": {
+    "title": "العنوان\nالرئيسي",
+    "subtitle": "كتابة جملة ثانوية فرعية لشرح العنوان",
+    "speakerName": "",
+    "info1Label": "",
+    "info1Value": "",
+    "info2Label": "",
+    "info2Value": "",
+    "info3Label": "",
+    "info3Value": ""
+  },
+  "fields": {
+    "subtitle": true,
+    "speakerName": false,
+    "informationCount": 0,
+    "labels": false,
+    "image": true,
+    "imageHint": "صورة طولية أو مربعة؛ يحتفظ القالب بالتدرج الأصلي فوق الصورة."
+  },
+  "layout": {
+    "title": {
+      "right": 776,
+      "width": 474,
+      "x": 302,
+      "y": 260,
+      "height": 327,
+      "max": 136.904,
+      "min": 58,
+      "baselines": [
+        366.524,
+        514.611
+      ],
+      "lineHeight": 1.081682,
+      "maxLines": 2,
+      "align": "center",
+      "bounds": [
+        302,
+        260,
+        776,
+        587
+      ]
+    },
+    "subtitle": {
+      "right": 777,
+      "width": 475,
+      "max": 31.631,
+      "min": 20,
+      "baseline": 646.533,
+      "maxLines": 1,
+      "align": "center",
+      "bounds": [
+        302,
+        623,
+        777,
+        656
+      ]
+    },
+    "photo": {
+      "x": 0,
+      "y": 181,
+      "width": 1080,
+      "height": 1119,
+      "shape": "rect",
+      "fit": "cover",
+      "grayscale": false,
+      "sourcePhotoBounds": [
+        -4,
+        181,
+        1086,
+        1800
+      ],
+      "foregroundBounds": [
+        0,
+        0,
+        1080,
+        1142
+      ]
+    },
+    "information": {
+      "right": 0,
+      "width": 0,
+      "max": 0,
+      "min": 0,
+      "baselines": []
+    }
+  },
+  "assets": {
+    "thumbnail": "assets/psb3/thumbnail.png",
+    "originalTitle": "assets/psb3/originalTitle.png",
+    "originalSubtitle": "assets/psb3/originalSubtitle.png",
+    "background": "assets/psb3/background.png",
+    "defaultPhoto": "assets/psb3/defaultPhoto.png",
+    "foreground": "assets/psb3/foreground.png"
+  },
+  "embeddedText": {
+    "titleAndSubtitle": {
+      "pageSize": [
+        115.80400085449219,
+        103.03900146484375
+      ],
+      "rawExtractedText": "\u001fاﻟﻌﻨـﻮا\n\u0018اﻟﺮﺋﻴﺴ\n ﻛﺘﺎﺑـــﺔ ﺟﻤﻠــﺔ ﺛﺎﻧﻮﻳــﺔ ﻓﺮﻋﻴــﺔ ﻟﺮﺸɇ اﻟﻌﻨﻮاﻧــ\n",
+      "fonts": [
+        "IBMPlexSansArabic-ExtraL",
+        "itfAsalArabic-Bold"
+      ],
+      "spans": [
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "\u001f",
+          "origin": [
+            3.561500072479248,
+            31.704498291015625
+          ],
+          "bbox": [
+            3.561500072479248,
+            -10.090095520019531,
+            46.340267181396484,
+            53.717193603515625
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "اﻟﻌﻨـﻮا",
+          "origin": [
+            108.65489196777344,
+            31.704498291015625
+          ],
+          "bbox": [
+            46.340267181396484,
+            -10.090095520019531,
+            115.83936309814453,
+            53.717193603515625
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "\u0018",
+          "origin": [
+            4.920400142669678,
+            67.18990325927734
+          ],
+          "bbox": [
+            4.920400142669678,
+            25.395309448242188,
+            47.43671798706055,
+            89.20259857177734
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "اﻟﺮﺋﻴﺴ",
+          "origin": [
+            107.24169921875,
+            67.18990325927734
+          ],
+          "bbox": [
+            47.43671798706055,
+            25.395309448242188,
+            114.4261703491211,
+            89.20259857177734
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "IBMPlexSansArabic-ExtraL",
+          "size": 7.579599857330322,
+          "text": " ﻛﺘﺎﺑـــﺔ ﺟﻤﻠــﺔ ﺛﺎﻧﻮﻳــﺔ ﻓﺮﻋﻴــﺔ ﻟﺮﺸɇ",
+          "origin": [
+            113.94149780273438,
+            98.80170440673828
+          ],
+          "bbox": [
+            20.303098678588867,
+            90.91133880615234,
+            115.73028564453125,
+            103.03870391845703
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "IBMPlexSansArabic-ExtraL",
+          "size": 7.579599857330322,
+          "text": " اﻟﻌﻨﻮاﻧــ",
+          "origin": [
+            18.514312744140625,
+            98.80170440673828
+          ],
+          "bbox": [
+            0.16410000622272491,
+            90.91133880615234,
+            20.303098678588867,
+            103.03870391845703
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        302.20626450803707,
+        234.21569362506216,
+        785.2062645080371,
+        234.21569362506216,
+        785.2062645080371,
+        664.2156936250622,
+        302.20626450803707,
+        664.2156936250622
+      ]
+    }
+  },
+  "fontNotes": {
+    "title": "itfAsalArabic-Bold",
+    "subtitle": "IBMPlexSansArabic-ExtraLight",
+    "body": null,
+    "titleEditing": "Keep the original raster when unchanged. Edited titles require the user's original font or an explicitly temporary font.",
+    "extraction": "The PDF's subset encoding omits/maps a few Arabic glyphs to controls; normalized defaults were verified against the saved visible artwork."
+  },
+  "fidelity": {
+    "rgbMeanAbsoluteDifference": 0.023531576448243115,
+    "rgbaMeanAbsoluteDifference": 0.017648682336182338,
+    "maxChannelDifference": 1,
+    "alphaMeanAbsoluteDifference": 0.0,
+    "fractionPixelsWithRgbDifferenceAbove4": 0.0,
+    "sourceAlphaRange": [
+      255,
+      255
+    ],
+    "method": "Original cached layers, masks, clipping group, opacity and Photoshop-saved pixels; no artwork/text redrawing."
+  }
+}

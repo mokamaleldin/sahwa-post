@@ -21,6 +21,7 @@ ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
 doc = fitz.open(SOURCE)
 page = doc[0]
 original = ET.fromstring(page.get_svg_image(text_as_path=True))
+page.get_pixmap(matrix=fitz.Matrix(180 / page.rect.width, 180 / page.rect.width), alpha=False).save(OUT / 'basic-thumbnail.png')
 
 def serialize(node):
     return ET.tostring(node, encoding='utf-8', xml_declaration=True)

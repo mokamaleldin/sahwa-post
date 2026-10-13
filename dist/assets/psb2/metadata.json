@@ -1,0 +1,506 @@
+{
+  "id": "psb2",
+  "name": "محاضرة مع صورة المحاضر",
+  "description": "صورة شخصية فوق إطار دائري، عنوان وجملة ثانوية، اسم المحاضر وثلاث خانات معلومات.",
+  "width": 1080,
+  "height": 1300,
+  "color": "#752026",
+  "source": {
+    "filename": "صحوة تيمبليت ٢(1).psb",
+    "sha256": "adaf132db8574fad4e25c9bf7f50aeaa14efe96f520c458714f6bdfd8db4b463",
+    "format": "Photoshop Large Document",
+    "layerCount": 19
+  },
+  "defaults": {
+    "title": "العنوان\nالرئيسي",
+    "subtitle": "كتابة جملة ثانوية فرعية لشرح العنوان",
+    "speakerName": "اسم الأستاذ",
+    "info1Label": "",
+    "info1Value": "نقاط المعلومات",
+    "info2Label": "",
+    "info2Value": "نقاط المعلومات",
+    "info3Label": "",
+    "info3Value": "نقاط المعلومات"
+  },
+  "fields": {
+    "subtitle": true,
+    "speakerName": true,
+    "informationCount": 3,
+    "labels": false,
+    "image": true,
+    "imageHint": "يفضل صورة PNG مفرغة للشخص؛ تتحكم في حجمها وموضعها داخل الإطار."
+  },
+  "layout": {
+    "title": {
+      "right": 952,
+      "width": 449,
+      "x": 503,
+      "y": 255,
+      "height": 309,
+      "max": 129.668,
+      "min": 58,
+      "baselines": [
+        356.039,
+        496.298
+      ],
+      "lineHeight": 1.081679,
+      "maxLines": 2,
+      "align": "right",
+      "bounds": [
+        503,
+        255,
+        952,
+        564
+      ]
+    },
+    "subtitle": {
+      "right": 952,
+      "width": 449,
+      "max": 29.959,
+      "min": 20,
+      "baseline": 621.247,
+      "maxLines": 1,
+      "align": "right",
+      "bounds": [
+        503,
+        599,
+        952,
+        630
+      ]
+    },
+    "photo": {
+      "x": 0,
+      "y": 490,
+      "width": 494,
+      "height": 574,
+      "shape": "mask",
+      "fit": "contain",
+      "grayscale": true,
+      "maskBounds": [
+        0,
+        490,
+        494,
+        1064
+      ],
+      "maskCanvas": [
+        1080,
+        1300
+      ],
+      "sourcePhotoBounds": [
+        -167,
+        392,
+        822,
+        1052
+      ],
+      "sourceCircleBounds": [
+        -9,
+        548,
+        494,
+        1064
+      ]
+    },
+    "speakerName": {
+      "right": 947,
+      "width": 449,
+      "max": 38.049,
+      "min": 23,
+      "baseline": 715.343,
+      "align": "right",
+      "maxLines": 1,
+      "bounds": [
+        739,
+        682,
+        947,
+        715
+      ]
+    },
+    "markers": [
+      {
+        "x": 914,
+        "y": 784,
+        "width": 44,
+        "height": 44
+      },
+      {
+        "x": 914,
+        "y": 861,
+        "width": 44,
+        "height": 44
+      },
+      {
+        "x": 914,
+        "y": 936,
+        "width": 44,
+        "height": 44
+      }
+    ],
+    "information": {
+      "right": 935,
+      "width": 415,
+      "max": 31.914,
+      "min": 23,
+      "baselines": [
+        817.097,
+        893.097,
+        967.097
+      ],
+      "maxLines": 1,
+      "align": "right",
+      "rows": [
+        {
+          "right": 935,
+          "width": 415,
+          "max": 31.914,
+          "min": 23,
+          "baseline": 817.097,
+          "align": "right",
+          "maxLines": 1,
+          "bounds": [
+            724,
+            793,
+            935,
+            825
+          ]
+        },
+        {
+          "right": 935,
+          "width": 415,
+          "max": 31.914,
+          "min": 23,
+          "baseline": 893.097,
+          "align": "right",
+          "maxLines": 1,
+          "bounds": [
+            724,
+            869,
+            935,
+            901
+          ]
+        },
+        {
+          "right": 935,
+          "width": 415,
+          "max": 31.914,
+          "min": 23,
+          "baseline": 967.097,
+          "align": "right",
+          "maxLines": 1,
+          "bounds": [
+            724,
+            943,
+            935,
+            975
+          ]
+        }
+      ]
+    }
+  },
+  "assets": {
+    "thumbnail": "assets/psb2/thumbnail.png",
+    "originalTitle": "assets/psb2/originalTitle.png",
+    "originalSubtitle": "assets/psb2/originalSubtitle.png",
+    "background": "assets/psb2/background.png",
+    "photoBackdrop": "assets/psb2/photoBackdrop.png",
+    "defaultPhoto": "assets/psb2/defaultPhoto.png",
+    "photoMask": "assets/psb2/photoMask.png",
+    "originalSpeakerName": "assets/psb2/originalSpeakerName.png",
+    "marker": "assets/psb2/marker.png",
+    "marker2": "assets/psb2/marker2.png",
+    "marker3": "assets/psb2/marker3.png",
+    "originalInformation1": "assets/psb2/originalInformation1.png",
+    "originalInformation2": "assets/psb2/originalInformation2.png",
+    "originalInformation3": "assets/psb2/originalInformation3.png"
+  },
+  "embeddedText": {
+    "titleAndSubtitle": {
+      "pageSize": [
+        115.80400085449219,
+        103.03900146484375
+      ],
+      "rawExtractedText": "\u001fاﻟﻌﻨـﻮا\n\u0018اﻟﺮﺋﻴﺴ\n ﻛﺘﺎﺑـــﺔ ﺟﻤﻠــﺔ ﺛﺎﻧﻮﻳــﺔ ﻓﺮﻋﻴــﺔ ﻟﺮﺸɇ اﻟﻌﻨﻮاﻧــ\n",
+      "fonts": [
+        "IBMPlexSansArabic-ExtraL",
+        "itfAsalArabic-Bold"
+      ],
+      "spans": [
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "\u001f",
+          "origin": [
+            3.561000108718872,
+            31.704498291015625
+          ],
+          "bbox": [
+            3.561000108718872,
+            -10.090095520019531,
+            46.33976745605469,
+            53.717193603515625
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "اﻟﻌﻨـﻮا",
+          "origin": [
+            108.65438842773438,
+            31.704498291015625
+          ],
+          "bbox": [
+            46.33976745605469,
+            -10.090095520019531,
+            115.83885955810547,
+            53.717193603515625
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "\u0018",
+          "origin": [
+            4.920400142669678,
+            67.18990325927734
+          ],
+          "bbox": [
+            4.920400142669678,
+            25.395309448242188,
+            47.43671798706055,
+            89.20259857177734
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "itfAsalArabic-Bold",
+          "size": 32.80580139160156,
+          "text": "اﻟﺮﺋﻴﺴ",
+          "origin": [
+            107.24169921875,
+            67.18990325927734
+          ],
+          "bbox": [
+            47.43671798706055,
+            25.395309448242188,
+            114.4261703491211,
+            89.20259857177734
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "IBMPlexSansArabic-ExtraL",
+          "size": 7.579599857330322,
+          "text": " ﻛﺘﺎﺑـــﺔ ﺟﻤﻠــﺔ ﺛﺎﻧﻮﻳــﺔ ﻓﺮﻋﻴــﺔ ﻟﺮﺸɇ",
+          "origin": [
+            113.94100952148438,
+            98.80170440673828
+          ],
+          "bbox": [
+            20.30259895324707,
+            90.91133880615234,
+            115.72979736328125,
+            103.03870391845703
+          ],
+          "color": 7675942
+        },
+        {
+          "font": "IBMPlexSansArabic-ExtraL",
+          "size": 7.579599857330322,
+          "text": " اﻟﻌﻨﻮاﻧــ",
+          "origin": [
+            18.513813018798828,
+            98.80170440673828
+          ],
+          "bbox": [
+            0.16359999775886536,
+            90.91133880615234,
+            20.30259895324707,
+            103.03870391845703
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        503.2096932608097,
+        230.724009292703,
+        960.679249938105,
+        230.724009292703,
+        960.679249938105,
+        637.9950431876036,
+        503.2096932608097,
+        637.9950431876036
+      ]
+    },
+    "speakerName": {
+      "pageSize": [
+        42.21870040893555,
+        10.732399940490723
+      ],
+      "rawExtractedText": "اﺳــﻤـــــ اﻷﺳﺘــــــﺎذ\n",
+      "fonts": [
+        "IBMPlexSansArabic-Light"
+      ],
+      "spans": [
+        {
+          "font": "IBMPlexSansArabic-Light",
+          "size": 7.579599857330322,
+          "text": "اﺳــﻤـــــ اﻷﺳﺘــــــﺎذ",
+          "origin": [
+            40.589263916015625,
+            6.480400085449219
+          ],
+          "bbox": [
+            0.0005000000237487257,
+            -1.5312376022338867,
+            42.21887969970703,
+            10.732555389404297
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        738.2955895248724,
+        682.8118061135128,
+        949.0117885044643,
+        682.8118061135128,
+        949.0117885044643,
+        736.6881069889766,
+        738.2955895248724,
+        736.6881069889766
+      ]
+    },
+    "information1": {
+      "pageSize": [
+        50.654300689697266,
+        10.6875
+      ],
+      "rawExtractedText": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ\n",
+      "fonts": [
+        "IBMPlexSansArabic-Light"
+      ],
+      "spans": [
+        {
+          "font": "IBMPlexSansArabic-Light",
+          "size": 7.579599857330322,
+          "text": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ",
+          "origin": [
+            48.7669792175293,
+            6.435500144958496
+          ],
+          "bbox": [
+            0.12110000103712082,
+            -1.5761375427246094,
+            50.654300689697266,
+            10.687655448913574
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        724.0,
+        790.0,
+        936.0,
+        790.0,
+        936.0,
+        835.0,
+        724.0,
+        835.0
+      ]
+    },
+    "information2": {
+      "pageSize": [
+        50.654300689697266,
+        10.6875
+      ],
+      "rawExtractedText": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ\n",
+      "fonts": [
+        "IBMPlexSansArabic-Light"
+      ],
+      "spans": [
+        {
+          "font": "IBMPlexSansArabic-Light",
+          "size": 7.579599857330322,
+          "text": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ",
+          "origin": [
+            48.7669792175293,
+            6.435500144958496
+          ],
+          "bbox": [
+            0.12110000103712082,
+            -1.5761375427246094,
+            50.654300689697266,
+            10.687655448913574
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        724.0,
+        866.0,
+        936.0,
+        866.0,
+        936.0,
+        911.0,
+        724.0,
+        911.0
+      ]
+    },
+    "information3": {
+      "pageSize": [
+        50.654300689697266,
+        10.6875
+      ],
+      "rawExtractedText": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ\n",
+      "fonts": [
+        "IBMPlexSansArabic-Light"
+      ],
+      "spans": [
+        {
+          "font": "IBMPlexSansArabic-Light",
+          "size": 7.579599857330322,
+          "text": "ﻧﻘـــﺎط اﻟﻤﻌﻠﻮﻣــــﺎﺗـــــــ",
+          "origin": [
+            48.7669792175293,
+            6.435500144958496
+          ],
+          "bbox": [
+            0.12110000103712082,
+            -1.5761375427246094,
+            50.654300689697266,
+            10.687655448913574
+          ],
+          "color": 7675942
+        }
+      ],
+      "transformBox": [
+        724.0,
+        940.0,
+        936.0,
+        940.0,
+        936.0,
+        985.0,
+        724.0,
+        985.0
+      ]
+    }
+  },
+  "fontNotes": {
+    "title": "itfAsalArabic-Bold",
+    "subtitle": "IBMPlexSansArabic-ExtraLight",
+    "body": "IBMPlexSansArabic-Light",
+    "titleEditing": "Keep the original raster when unchanged. Edited titles require the user's original font or an explicitly temporary font.",
+    "extraction": "The PDF's subset encoding omits/maps a few Arabic glyphs to controls; normalized defaults were verified against the saved visible artwork."
+  },
+  "fidelity": {
+    "rgbMeanAbsoluteDifference": 0.44264981006647675,
+    "rgbaMeanAbsoluteDifference": 0.3729975071225071,
+    "maxChannelDifference": 7,
+    "alphaMeanAbsoluteDifference": 0.16404059829059828,
+    "fractionPixelsWithRgbDifferenceAbove4": 9.259259259259259e-06,
+    "sourceAlphaRange": [
+      32,
+      255
+    ],
+    "method": "Original cached layers, masks, clipping group, opacity and Photoshop-saved pixels; no artwork/text redrawing."
+  }
+}
