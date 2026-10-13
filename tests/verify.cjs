@@ -99,7 +99,7 @@ function equalPixels(a, b) { return Buffer.from(a).equals(Buffer.from(b)); }
       assert.equal(Engine.hasArabicFontProgram(partial), false);
     }
   });
-  check('guide palette and original logo and symbol are bundled for offline use', () => {
+  check('guide palette and original logo and symbol are bundled for the hosted app', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(assets.brand.colors)), { primary: '#752026', dark: '#350e15', gold: '#d6ad63', paper: '#f2e9e2' });
     assert.ok(assets.logo.startsWith('data:image/png;base64,')); assert.ok(assets.symbol.startsWith('data:image/png;base64,'));
     assert.ok(assets.fonts.regular.startsWith('data:font/ttf;base64,')); assert.ok(assets.fonts.thin.startsWith('data:font/ttf;base64,'));

@@ -1,4 +1,4 @@
-"""Bundle the prepared template artwork and fonts for hosted and offline use."""
+"""Bundle the prepared template artwork and fonts for the hosted app."""
 from pathlib import Path
 import base64
 import json
